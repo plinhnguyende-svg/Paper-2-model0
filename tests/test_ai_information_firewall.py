@@ -4,9 +4,13 @@ from dataclasses import fields
 
 import numpy as np
 import pandas as pd
+import pytest
 
 from paper2_model0.config import SimulationConfig
-from paper2_model0.decision_architectures import RuleBasedDecisionArchitecture
+from paper2_model0.decision_architectures import (
+    RuleBasedDecisionArchitecture,
+    validate_decision_architecture,
+)
 from paper2_model0.domain.observations import (
     ExporterObservation,
     ImporterObservation,
@@ -17,48 +21,75 @@ from paper2_model0.domain.scenario import deterministic_scenario
 from paper2_model0.engine.model import SupplyChainModel
 
 
-class RecordingAIStubDecisionArchitecture:
-    """Deterministic AI-shaped stub used only to audit the information firewall.
+class RecordingRetailerPolicy:
+    def __init__(self, delegate):
+        self.delegate = delegate
+        self.observations = []
 
-    It delegates decisions to the validated RuleBased adapter so that this test
-    introduces no performance treatment. Its only new behavior is recording
-    exactly what the engine passes across the policy boundary.
+    def decide(self, observation: RetailerObservation):
+        self.observations.append(observation)
+        return self.delegate.decide(observation)
+
+
+class RecordingImporterPolicy:
+    def __init__(self, delegate):
+        self.delegate = delegate
+        self.replenishment_observations = []
+        self.allocation_calls = []
+
+    def decide_replenishment(
+        self, observation: ImporterReplenishmentObservation
+    ):
+        self.replenishment_observations.append(observation)
+        return self.delegate.decide_replenishment(observation)
+
+    def decide_allocation(
+        self,
+        procurement_requirement: float,
+        observation: ImporterObservation,
+    ):
+        self.allocation_calls.append(
+            (float(procurement_requirement), observation)
+        )
+        return self.delegate.decide_allocation(
+            procurement_requirement, observation
+        )
+
+
+class RecordingExporterPolicy:
+    def __init__(self, delegate):
+        self.delegate = delegate
+        self.observations = []
+
+    def decide(self, observation: ExporterObservation):
+        self.observations.append(observation)
+        return self.delegate.decide(observation)
+
+
+class RecordingAIStubDecisionArchitecture:
+    """AI-shaped stub used only to audit the information firewall.
+
+    Each retailer, importer, and exporter has a separate stateful policy object.
+    The wrappers delegate to the validated RuleBased policies, so this test adds
+    no performance treatment.
     """
 
     name = "AI-stub-no-training"
 
     def __init__(self, config: SimulationConfig):
-        self.delegate = RuleBasedDecisionArchitecture(config)
-        self.retailer_observations = []
-        self.importer_replenishment_observations = []
-        self.importer_allocation_calls = []
-        self.exporter_observations = []
-
-    def retailer_replenishment(self, observation: RetailerObservation):
-        self.retailer_observations.append(observation)
-        return self.delegate.retailer_replenishment(observation)
-
-    def importer_replenishment(
-        self, observation: ImporterReplenishmentObservation
-    ):
-        self.importer_replenishment_observations.append(observation)
-        return self.delegate.importer_replenishment(observation)
-
-    def importer_allocation(
-        self,
-        procurement_requirement: float,
-        observation: ImporterObservation,
-    ):
-        self.importer_allocation_calls.append(
-            (float(procurement_requirement), observation)
+        delegate = RuleBasedDecisionArchitecture(config)
+        self.retailer_policies = tuple(
+            RecordingRetailerPolicy(policy)
+            for policy in delegate.retailer_policies
         )
-        return self.delegate.importer_allocation(
-            procurement_requirement, observation
+        self.importer_policy = RecordingImporterPolicy(
+            delegate.importer_policy
         )
-
-    def exporter_readiness(self, observation: ExporterObservation):
-        self.exporter_observations.append(observation)
-        return self.delegate.exporter_readiness(observation)
+        self.exporter_policies = tuple(
+            RecordingExporterPolicy(policy)
+            for policy in delegate.exporter_policies
+        )
+        validate_decision_architecture(self)
 
 
 def _config(T=6):
@@ -118,6 +149,46 @@ def test_importer_replenishment_firewall_excludes_current_exporter_state():
     assert _field_names(ImporterReplenishmentObservation) == expected
 
 
+def test_actor_policy_instances_are_distinct_and_routed_separately():
+    config = _config(T=1)
+    recorder = RecordingAIStubDecisionArchitecture(config)
+
+    controllers = [
+        *recorder.retailer_policies,
+        recorder.importer_policy,
+        *recorder.exporter_policies,
+    ]
+    assert len({id(x) for x in controllers}) == 6
+
+    SupplyChainModel(
+        config,
+        "F",
+        _scenario(T=1),
+        decision_architecture=recorder,
+    ).run()
+
+    assert [len(p.observations) for p in recorder.retailer_policies] == [1, 1, 1]
+    assert len(recorder.importer_policy.replenishment_observations) == 1
+    assert len(recorder.importer_policy.allocation_calls) == 1
+    assert [len(p.observations) for p in recorder.exporter_policies] == [1, 1]
+
+
+def test_shared_actor_policy_instance_is_rejected():
+    shared_exporter_policy = object()
+
+    class BadArchitecture:
+        name = "bad-shared-state"
+        retailer_policies = (object(), object(), object())
+        importer_policy = object()
+        exporter_policies = (
+            shared_exporter_policy,
+            shared_exporter_policy,
+        )
+
+    with pytest.raises(ValueError, match="information side channel"):
+        validate_decision_architecture(BadArchitecture())
+
+
 def test_ai_stub_can_substitute_without_changing_rulebased_outputs():
     config = _config()
     scenario = _scenario()
@@ -162,28 +233,33 @@ def test_n_s_f_information_rights_are_preserved_at_ai_policy_boundary():
     # Importer replenishment is formed before current exporter availability is
     # revealed and therefore has the same observation schema in every regime.
     for regime in ("N", "S", "F"):
-        imp_rep = records[regime].importer_replenishment_observations[0]
+        imp_rep = records[
+            regime
+        ].importer_policy.replenishment_observations[0]
         assert not hasattr(imp_rep, "verified_exporter_availability")
         assert not hasattr(imp_rep, "rival_operational_availability")
 
     # Allocation boundary: N hides current exporter state; S and F reveal the
     # same verified state to the importer.
-    n_imp = records["N"].importer_allocation_calls[0][1]
-    s_imp = records["S"].importer_allocation_calls[0][1]
-    f_imp = records["F"].importer_allocation_calls[0][1]
+    n_imp = records["N"].importer_policy.allocation_calls[0][1]
+    s_imp = records["S"].importer_policy.allocation_calls[0][1]
+    f_imp = records["F"].importer_policy.allocation_calls[0][1]
     assert n_imp.verified_exporter_availability == (None, None)
     assert s_imp.verified_exporter_availability == (True, False)
     assert f_imp.verified_exporter_availability == (True, False)
 
-    # Exporter boundary: own current availability is always known. Rival
-    # current availability is hidden in N and S and visible only in F.
-    for regime in ("N", "S", "F"):
-        e1 = records[regime].exporter_observations[0]
-        assert e1.own_operational_availability is True
+    # Exporter boundary: each exporter gets only its own policy instance.
+    n_e1 = records["N"].exporter_policies[0].observations[0]
+    s_e1 = records["S"].exporter_policies[0].observations[0]
+    f_e1 = records["F"].exporter_policies[0].observations[0]
 
-    assert records["N"].exporter_observations[0].rival_operational_availability is None
-    assert records["S"].exporter_observations[0].rival_operational_availability is None
-    assert records["F"].exporter_observations[0].rival_operational_availability is False
+    assert n_e1.own_operational_availability is True
+    assert s_e1.own_operational_availability is True
+    assert f_e1.own_operational_availability is True
+
+    assert n_e1.rival_operational_availability is None
+    assert s_e1.rival_operational_availability is None
+    assert f_e1.rival_operational_availability is False
 
 
 def test_ai_boundary_never_receives_the_exogenous_scenario_object():
@@ -198,12 +274,17 @@ def test_ai_boundary_never_receives_the_exogenous_scenario_object():
         decision_architecture=recorder,
     ).run()
 
-    observed_objects = (
-        recorder.retailer_observations
-        + recorder.importer_replenishment_observations
-        + [obs for _, obs in recorder.importer_allocation_calls]
-        + recorder.exporter_observations
+    observed_objects = []
+    for policy in recorder.retailer_policies:
+        observed_objects.extend(policy.observations)
+    observed_objects.extend(
+        recorder.importer_policy.replenishment_observations
     )
+    observed_objects.extend(
+        obs for _, obs in recorder.importer_policy.allocation_calls
+    )
+    for policy in recorder.exporter_policies:
+        observed_objects.extend(policy.observations)
 
     assert observed_objects
     for observation in observed_objects:
