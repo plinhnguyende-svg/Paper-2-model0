@@ -50,6 +50,25 @@ def _second_smoke_scenario(config: SimulationConfig):
     return deterministic_scenario(demand, availability, seed=909002)
 
 
+def _assert_nested_equal(left, right):
+    if isinstance(left, torch.Tensor):
+        assert isinstance(right, torch.Tensor)
+        torch.testing.assert_close(left, right, rtol=0.0, atol=0.0)
+        return
+    if isinstance(left, dict):
+        assert set(left) == set(right)
+        for key in left:
+            _assert_nested_equal(left[key], right[key])
+        return
+    if isinstance(left, (list, tuple)):
+        assert type(left) is type(right)
+        assert len(left) == len(right)
+        for a, b in zip(left, right):
+            _assert_nested_equal(a, b)
+        return
+    assert left == right
+
+
 def _assert_actor_states_equal(left, right):
     for actor in ACTOR_NAMES:
         a = left.agents[actor]
@@ -68,6 +87,10 @@ def _assert_actor_states_equal(left, right):
         assert torch.equal(
             a.updater._shuffle_generator.get_state(),
             b.updater._shuffle_generator.get_state(),
+        )
+        _assert_nested_equal(
+            a.updater.optimizer.state_dict(),
+            b.updater.optimizer.state_dict(),
         )
 
 
