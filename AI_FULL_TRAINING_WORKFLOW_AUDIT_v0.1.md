@@ -62,6 +62,10 @@ recovery pointer.
 
 Neither is a scientific parameter.
 
+Both dispatch strings are first bound to step environment variables; they are
+not interpolated directly into shell command text. The resume id is additionally
+restricted to a positive decimal integer before any scientific step can run.
+
 The workflow has no input for:
 
 - number of episodes;
@@ -352,6 +356,12 @@ Sixth, runtime constraints were validated by adding a dedicated
 **non-training** freeze-gate workflow. That gate installs the frozen runtime and
 executes only workflow/launcher contract tests; it never authorizes or invokes
 scientific full training.
+
+Seventh, the initial shell boundary interpolated manual dispatch strings
+directly into shell snippets. The final workflow binds those values through
+step environment variables, validates the resume id as a positive integer, and
+uses a Bash argument array for the operational resume flags. Manual text input
+therefore cannot become an alternative command or scientific override path.
 
 ## 12. Freeze criterion
 
