@@ -262,6 +262,10 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
+    if bool(args.resume_run_id) != bool(args.require_existing_state):
+        raise ValueError(
+            "resume_run_id and --require-existing-state must be supplied together"
+        )
     job = locked_job(args.regime, args.training_seed)
 
     validate_authorization_environment()
