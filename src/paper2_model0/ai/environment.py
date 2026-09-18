@@ -34,6 +34,7 @@ class DecisionRecord:
     latent_action: np.ndarray
     log_prob: float
     value: float
+    policy_active: bool
 
 
 class _AIRetailerPolicy:
@@ -69,6 +70,7 @@ class _AIRetailerPolicy:
                 latent_action=latent.copy(),
                 log_prob=float(log_prob),
                 value=float(value),
+                policy_active=True,
             )
         )
         return self.transformer.retailer_action(
@@ -110,6 +112,7 @@ class _AIImporterPolicy:
                 latent_action=latent.copy(),
                 log_prob=float(log_prob),
                 value=float(value),
+                policy_active=True,
             )
         )
         return self.transformer.importer_replenishment_action(
@@ -146,10 +149,33 @@ class _AIExporterPolicy:
 
     def decide(self, observation: ExporterObservation):
         encoded = self.encoder.encode_exporter(observation)
-        latent, log_prob, value = self.agent.act(
-            encoded,
-            deterministic=self.deterministic,
-        )
+
+        if observation.own_operational_availability:
+            latent, log_prob, value = self.agent.act(
+                encoded,
+                deterministic=self.deterministic,
+            )
+            policy_active = True
+        else:
+            # Unavailable exporters have no decision right in v0.1. Keep the
+            # day in the critic/reward timeline, but do not sample an action or
+            # create a policy-gradient contribution.
+            latent = np.zeros(
+                self.agent.network.action_dim,
+                dtype=np.float32,
+            )
+            tensor = torch.as_tensor(
+                encoded,
+                dtype=torch.float32,
+                device=self.agent.device,
+            )
+            with torch.no_grad():
+                value = float(
+                    self.agent.network.value(tensor).squeeze(0).cpu()
+                )
+            log_prob = 0.0
+            policy_active = False
+
         self.records.append(
             DecisionRecord(
                 day=int(observation.current_day),
@@ -157,6 +183,7 @@ class _AIExporterPolicy:
                 latent_action=latent.copy(),
                 log_prob=float(log_prob),
                 value=float(value),
+                policy_active=policy_active,
             )
         )
         return self.transformer.exporter_readiness_action(
@@ -272,10 +299,17 @@ def physical_team_rewards(
     if len(period_df) == 0:
         raise ValueError("period_df must be non-empty")
 
-    rewards = -(
-        period_df["aggregate_lost_sales"].to_numpy(dtype=float)
-        + period_df["total_waste"].to_numpy(dtype=float)
-    ) / float(aggregate_mean_demand)
+    lost_sales = period_df["aggregate_lost_sales"].to_numpy(dtype=float)
+    waste = period_df["total_waste"].to_numpy(dtype=float)
+
+    # Model 0 serves consumer demand before the day's replenishment/readiness
+    # decisions. Therefore lost_sales[t] is pre-action with respect to actions
+    # chosen on day t. Attach next-day lost sales to the current transition,
+    # while same-day waste remains post-action. Day-0 lost sales are an initial
+    # condition and are not assigned to an action that did not cause them.
+    rewards = -waste / float(aggregate_mean_demand)
+    if len(rewards) > 1:
+        rewards[:-1] -= lost_sales[1:] / float(aggregate_mean_demand)
 
     rewards = np.asarray(rewards, dtype=np.float64)
     rewards[-1] -= float(
@@ -326,6 +360,7 @@ def build_episode_rollout_buffers(
                 reward=float(rewards[index]),
                 value=record.value,
                 done=(index == len(actor_records) - 1),
+                policy_active=record.policy_active,
             )
         buffers[actor_name] = buffer
 
