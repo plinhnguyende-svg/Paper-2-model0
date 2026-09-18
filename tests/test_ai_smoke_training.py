@@ -57,7 +57,8 @@ def test_physical_team_reward_uses_period_loss_waste_and_terminal_leftover():
     frame = pd.DataFrame(
         {
             "aggregate_lost_sales": [3.0, 6.0],
-            "total_waste": [0.0, 3.0],
+            "on_hand_waste": [1.0, 3.0],
+            "transit_waste": [7.0, 2.0],
             "total_on_hand_inventory": [100.0, 30.0],
             "total_pipeline_inventory": [20.0, 15.0],
         }
@@ -69,7 +70,7 @@ def test_physical_team_reward_uses_period_loss_waste_and_terminal_leftover():
     np.testing.assert_allclose(
         reward,
         [
-            -(0.0 + 6.0) / 30.0,
+            -(1.0 + 6.0 + 2.0) / 30.0,
             -(3.0) / 30.0 - (30.0 + 15.0) / 30.0,
         ],
     )
@@ -220,7 +221,25 @@ def test_day_zero_lost_sales_is_not_attributed_to_same_day_action():
     frame = pd.DataFrame(
         {
             "aggregate_lost_sales": [30.0, 0.0],
-            "total_waste": [0.0, 0.0],
+            "on_hand_waste": [0.0, 0.0],
+            "transit_waste": [0.0, 0.0],
+            "total_on_hand_inventory": [0.0, 0.0],
+            "total_pipeline_inventory": [0.0, 0.0],
+        }
+    )
+    reward = physical_team_rewards(
+        frame,
+        aggregate_mean_demand=30.0,
+    )
+    np.testing.assert_allclose(reward, [0.0, 0.0])
+
+
+def test_day_zero_transit_waste_is_not_attributed_to_same_day_action():
+    frame = pd.DataFrame(
+        {
+            "aggregate_lost_sales": [0.0, 0.0],
+            "on_hand_waste": [0.0, 0.0],
+            "transit_waste": [30.0, 0.0],
             "total_on_hand_inventory": [0.0, 0.0],
             "total_pipeline_inventory": [0.0, 0.0],
         }
