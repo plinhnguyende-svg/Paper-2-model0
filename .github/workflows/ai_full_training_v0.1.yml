@@ -1,0 +1,113 @@
+name: AI Full Scientific Training v0.1
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: "Type RUN_FROZEN_AI_V0_1 to authorize the audited 15-job run"
+        required: true
+        type: string
+      resume_run_id:
+        description: "Optional prior workflow run ID whose 15 job artifacts must be restored"
+        required: false
+        default: ""
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: ai-full-scientific-training-v0.1
+  cancel-in-progress: false
+
+jobs:
+  train:
+    name: "${{ matrix.regime }} / seed ${{ matrix.training_seed }}"
+    runs-on: ubuntu-24.04
+    timeout-minutes: 330
+    strategy:
+      fail-fast: false
+      max-parallel: 5
+      matrix:
+        include:
+          - { regime: N, training_seed: 41001 }
+          - { regime: N, training_seed: 41002 }
+          - { regime: N, training_seed: 41003 }
+          - { regime: N, training_seed: 41004 }
+          - { regime: N, training_seed: 41005 }
+          - { regime: S, training_seed: 41001 }
+          - { regime: S, training_seed: 41002 }
+          - { regime: S, training_seed: 41003 }
+          - { regime: S, training_seed: 41004 }
+          - { regime: S, training_seed: 41005 }
+          - { regime: F, training_seed: 41001 }
+          - { regime: F, training_seed: 41002 }
+          - { regime: F, training_seed: 41003 }
+          - { regime: F, training_seed: 41004 }
+          - { regime: F, training_seed: 41005 }
+    env:
+      PAPER2_AI_FULL_TRAINING_AUTHORIZED: "YES"
+      PAPER2_AI_FROZEN_LAUNCHER_SHA: "fb4f386703294990917e9d99e10013925a9a54d6"
+      OMP_NUM_THREADS: "1"
+      MKL_NUM_THREADS: "1"
+      OPENBLAS_NUM_THREADS: "1"
+      NUMEXPR_NUM_THREADS: "1"
+      PYTHONHASHSEED: "0"
+
+    steps:
+      - name: Require explicit frozen-run confirmation
+        run: |
+          test "${{ inputs.confirmation }}" = "RUN_FROZEN_AI_V0_1"
+          test "${GITHUB_REF}" = "refs/heads/main"
+
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up locked Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12.14"
+          cache: pip
+
+      - name: Install locked scientific runtime
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-ai-training-v0.1.txt
+          python -m pip install -e . --no-deps
+
+      - name: Restore committed episode-boundary state
+        if: ${{ inputs.resume_run_id != '' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: "ai-training-${{ matrix.regime }}-seed-${{ matrix.training_seed }}"
+          path: "outputs/ai_full_training_v0.1/regime_${{ matrix.regime }}/seed_${{ matrix.training_seed }}"
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          run-id: ${{ inputs.resume_run_id }}
+
+      - name: Validate frozen job and restored state
+        run: |
+          EXTRA_ARGS=""
+          if [ -n "${{ inputs.resume_run_id }}" ]; then
+            EXTRA_ARGS="--require-existing-state --resume-run-id ${{ inputs.resume_run_id }}"
+          fi
+          python scripts/run_ai_full_training_job.py             --regime "${{ matrix.regime }}"             --training-seed "${{ matrix.training_seed }}"             --validate-only             ${EXTRA_ARGS}
+
+      - name: Run frozen scientific training job
+        timeout-minutes: 300
+        run: |
+          EXTRA_ARGS=""
+          if [ -n "${{ inputs.resume_run_id }}" ]; then
+            EXTRA_ARGS="--require-existing-state --resume-run-id ${{ inputs.resume_run_id }}"
+          fi
+          python scripts/run_ai_full_training_job.py             --regime "${{ matrix.regime }}"             --training-seed "${{ matrix.training_seed }}"             ${EXTRA_ARGS}
+
+      - name: Persist committed recovery state
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: "ai-training-${{ matrix.regime }}-seed-${{ matrix.training_seed }}"
+          path: "outputs/ai_full_training_v0.1/regime_${{ matrix.regime }}/seed_${{ matrix.training_seed }}"
+          if-no-files-found: error
+          retention-days: 90
