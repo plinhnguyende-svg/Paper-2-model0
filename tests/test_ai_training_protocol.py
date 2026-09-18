@@ -441,6 +441,13 @@ def test_episode_boundary_resets_only_diagnostic_traces_not_learning_state():
         exporter.inventory.total_quantity() == 0.0
         for exporter in second_runner.model.exporters
     )
+    assert [
+        retailer.demand_forecast
+        for retailer in second_runner.model.retailers
+    ] == list(config.retailer_mean_demand)
+    assert second_runner.model.importer.downstream_order_forecast == pytest.approx(
+        sum(config.retailer_mean_demand)
+    )
 
     for actor in ACTOR_NAMES:
         for key, value in architecture.agents[actor].network.state_dict().items():
