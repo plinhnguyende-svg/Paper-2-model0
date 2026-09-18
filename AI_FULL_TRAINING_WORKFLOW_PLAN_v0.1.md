@@ -98,7 +98,9 @@ This workflow supplies the durable transport layer.
 An optional operational input, \`resume_run_id\`, may identify one previous
 workflow run whose job artifacts should be restored.
 
-This input does not alter the scientific design.
+This input does not alter the scientific design. Both manual dispatch strings
+are passed into shell steps through environment variables rather than direct
+expression interpolation; the resume id must be a positive decimal integer.
 
 For each matrix job, the workflow restores exactly one artifact named:
 
