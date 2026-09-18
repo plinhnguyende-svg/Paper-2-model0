@@ -12,6 +12,7 @@ from paper2_model0.ai import (
     BoundaryAwareEpisodeRunner,
     PPOUpdateStats,
     expected_rollout_partition,
+    physical_team_rewards,
     tiny_deterministic_smoke_case,
 )
 from paper2_model0.config import SimulationConfig
@@ -263,4 +264,30 @@ def test_256_chunk_updates_each_actor_before_its_day_256_action():
     np.testing.assert_array_equal(
         captured_first_masks["E2"],
         availability[:256, 1],
+    )
+
+
+def test_causal_reward_indexing_preserves_locked_undiscounted_episode_objective():
+    config, scenario = _small_case(12)
+    frame = SupplyChainModel(config, "F", scenario).run()
+    scale = float(sum(config.retailer_mean_demand))
+
+    transition_rewards = physical_team_rewards(
+        frame,
+        aggregate_mean_demand=scale,
+    )
+    locked_spec_total = -(
+        float(frame["aggregate_lost_sales"].sum())
+        + float(frame["total_waste"].sum())
+        + float(frame.iloc[-1]["total_on_hand_inventory"])
+        + float(frame.iloc[-1]["total_pipeline_inventory"])
+    ) / scale
+
+    initial_preaction_constant = (
+        float(frame.iloc[0]["aggregate_lost_sales"])
+        + float(frame.iloc[0]["transit_waste"])
+    ) / scale
+
+    assert float(transition_rewards.sum()) == pytest.approx(
+        locked_spec_total + initial_preaction_constant
     )
