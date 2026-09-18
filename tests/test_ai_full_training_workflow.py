@@ -207,6 +207,11 @@ def test_entrypoint_has_no_scientific_override_arguments_and_requires_frozen_con
 
 def test_entrypoint_runtime_validator_is_exact(monkeypatch):
     module = _load_entrypoint("run_ai_full_training_job_runtime")
+    monkeypatch.setattr(module.platform, "python_version", lambda: "3.12.14")
+    monkeypatch.setattr(module.np, "__version__", "2.5.3")
+    monkeypatch.setattr(module.pd, "__version__", "3.0.6")
+    monkeypatch.setattr(module.yaml, "__version__", "6.0.3")
+    monkeypatch.setattr(module.torch, "__version__", "2.14.0")
     module.validate_frozen_runtime_versions()
 
     monkeypatch.setattr(module.platform, "python_version", lambda: "3.12.13")
