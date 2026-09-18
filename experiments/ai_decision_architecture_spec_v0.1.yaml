@@ -36,6 +36,7 @@ observation_encoding:
   unknown_binary_encoding:
     value_when_unknown: 0
     separate_known_mask: true
+  identical_input_dimension_across_regimes: true
 
 actions:
   retailer:
@@ -88,6 +89,7 @@ training:
   episode_horizon_days: 1000
   training_seeds: [41001, 41002, 41003, 41004, 41005]
   common_exogenous_episode_seed_sequence_across_N_S_F: true
+  same_network_and_initialization_convention_across_N_S_F: true
   early_stopping: false
   model_selection: fixed_budget_final_checkpoint
   training_diagnostics_required: true
