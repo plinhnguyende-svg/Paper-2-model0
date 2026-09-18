@@ -1,0 +1,150 @@
+spec_version: ai_decision_architecture_v0.1
+status: locked_pre_implementation
+frozen_firewall_base_commit: a1c0b15163d05fd4b02ccdcb1fa2843a421a07d3
+
+factorial_design:
+  information_regimes: [N, S, F]
+  decision_architectures: [RuleBased, AI]
+  primary_interactions:
+    - vertical_S_minus_N_by_AI
+    - horizontal_F_minus_S_by_AI
+  node_level_ablations_confirmatory: false
+
+ai_algorithm:
+  family: IPPO
+  centralized_critic: false
+  recurrent: false
+  parameter_sharing: false
+  policy_distribution: gaussian_latent
+  evaluation_action: deterministic_mean
+  network:
+    hidden_layers: [64, 64]
+    activation: tanh
+
+actor_instances:
+  learnable_retailers: 3
+  learnable_importer_replenishment: 1
+  learnable_exporters: 2
+  ai_controls_importer_allocation: false
+  shared_mutable_policy_instances_allowed: false
+
+observation_encoding:
+  require_positive_retailer_mean_demand: true
+  include_current_day: false
+  include_regime_label: false
+  quantity_normalization:
+    retailer: own_mean_demand
+    importer: aggregate_mean_demand
+    exporter: aggregate_mean_demand
+  unknown_binary_encoding:
+    value_when_unknown: 0
+    separate_known_mask: true
+  identical_input_dimension_across_regimes: true
+
+forecast_state:
+  ai_controls_forecast_update: false
+  retailer_update: fixed_exponential_smoothing
+  importer_update: fixed_exponential_smoothing
+  smoothing_parameter: model_config_alpha
+
+actions:
+  retailer:
+    latent_dimension: 1
+    transform: sigmoid_bounded_target_inventory_position
+    max_target: shelf_life_days_times_own_mean_demand
+    order_rule: max_zero_target_minus_on_hand_minus_pipeline
+  importer_replenishment:
+    latent_dimension: 1
+    transform: sigmoid_bounded_target_inventory_position
+    max_target: shelf_life_days_times_aggregate_mean_demand
+    procurement_rule: max_zero_target_minus_on_hand_minus_pipeline
+    timing: before_current_exporter_availability_reveal
+  importer_allocation:
+    learned: false
+    N_rule: equal_split_no_same_period_reallocation
+    S_F_rule: equal_split_among_verified_active_exporters
+    no_active_allocation: [0.0, 0.0]
+  exporter_readiness:
+    latent_dimension: 1
+    transform: sigmoid_bounded_readiness_target
+    max_target: current_procurement_requirement
+    unavailable_action: forced_zero
+    preparation_rule: max_zero_target_minus_on_hand
+
+reward:
+  type: common_team_physical_efficiency
+  per_period: negative_lost_sales_plus_waste_divided_by_aggregate_mean_demand
+  terminal: negative_on_hand_plus_pipeline_divided_by_aggregate_mean_demand
+  cooperative_team_objective: true
+  excludes:
+    - bullwhip
+    - readiness_gap
+    - service_level_ratio
+    - regime_label
+
+ppo:
+  optimizer: Adam
+  learning_rate: 0.0003
+  gamma: 1.0
+  gae_lambda: 0.95
+  clip_range: 0.20
+  value_loss_coefficient: 0.50
+  entropy_coefficient: 0.01
+  max_gradient_norm: 0.50
+  rollout_length_days: 256
+  minibatch_size: 64
+  update_epochs: 10
+  hyperparameter_search: false
+
+training:
+  episodes_per_seed: 1000
+  episode_horizon_days: 1000
+  training_seeds: [41001, 41002, 41003, 41004, 41005]
+  common_exogenous_episode_seed_sequence_across_N_S_F: true
+  same_network_and_initialization_convention_across_N_S_F: true
+  early_stopping: false
+  model_selection: fixed_budget_final_checkpoint
+  posthoc_budget_extension_allowed: false
+  convergence_diagnostic:
+    earlier_window: [601, 800]
+    final_window: [801, 1000]
+    max_absolute_relative_mean_change: 0.05
+    final_window_slope_95pct_ci_must_include_zero: true
+  training_diagnostics_required: true
+
+evaluation:
+  horizon_days: 1000
+  warmup_days: 200
+  held_out_replications: 200
+  evaluation_master_seed: 52001
+  common_random_numbers_across_six_treatments: true
+  learning_during_evaluation: false
+  exploration_during_evaluation: false
+  ai_training_seed_models_evaluated: 5
+
+primary_outcomes:
+  - service_level
+  - waste_share_of_terminal_outflow
+  - importer_procurement_bullwhip
+  - mean_total_inventory
+  - mean_abs_target_allocation_gap_exporter_average
+
+secondary_outcomes:
+  - retail_order_bullwhip
+  - total_lost_sales
+  - total_waste
+  - mean_abs_stock_allocation_gap_exporter_average
+
+uncertainty:
+  method: hierarchical_bootstrap
+  bootstrap_resamples: 10000
+  resample_training_seed: true
+  resample_scenario_id: true
+  preserve_treatment_pairing_within_scenario: true
+  independent_training_seed_count: 5
+  confirmatory_test_count: 10
+  multiplicity_if_significance_claimed: Holm
+
+no_training_gate:
+  training_allowed_before_spec_merge: false
+  implementation_branch_must_start_from_locked_spec_commit: true
