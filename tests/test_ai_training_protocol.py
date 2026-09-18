@@ -170,6 +170,7 @@ def test_manifest_is_complete_hash_bound_and_schedule_checked():
     assert manifest["episode_horizon_days"] == 1000
     assert manifest["rollout_length_days"] == 256
     assert len(manifest["simulation_config_sha256"]) == 64
+    assert manifest["source_commit_sha"] == SOURCE_COMMIT_SHA
     validate_run_manifest(manifest)
 
     tampered = deepcopy(manifest)
@@ -207,6 +208,7 @@ def test_checkpoint_contains_all_six_network_optimizer_and_rng_states():
     )
 
     assert set(payload["actors"]) == set(ACTOR_NAMES)
+    assert payload["run_manifest_sha256"] is None
     for actor_state in payload["actors"].values():
         assert set(actor_state) == {
             "network",
@@ -240,7 +242,8 @@ def test_uninterrupted_and_save_resume_match_next_actions_and_subsequent_updates
         regime="F",
         scenario=first_scenario,
         training_seed=41001,
-        architecture=uninterrupted_architecture,        allow_test_fixture=True,
+        architecture=uninterrupted_architecture,
+        allow_test_fixture=True,
     )
     first_runner.run_episode()
 
@@ -258,7 +261,8 @@ def test_uninterrupted_and_save_resume_match_next_actions_and_subsequent_updates
         regime="F",
         scenario=second_scenario,
         training_seed=41001,
-        architecture=uninterrupted_architecture,        allow_test_fixture=True,
+        architecture=uninterrupted_architecture,
+        allow_test_fixture=True,
     ).run_episode()
 
     resumed_architecture, metadata = load_training_checkpoint(
@@ -274,7 +278,8 @@ def test_uninterrupted_and_save_resume_match_next_actions_and_subsequent_updates
         regime="F",
         scenario=second_scenario,
         training_seed=41001,
-        architecture=resumed_architecture,        allow_test_fixture=True,
+        architecture=resumed_architecture,
+        allow_test_fixture=True,
     ).run_episode()
 
     pdt.assert_frame_equal(
@@ -393,7 +398,8 @@ def test_episode_boundary_resets_only_diagnostic_traces_not_learning_state():
         regime="N",
         scenario=first_scenario,
         training_seed=41001,
-        architecture=architecture,        allow_test_fixture=True,
+        architecture=architecture,
+        allow_test_fixture=True,
     ).run_episode()
 
     first_network_state = {
@@ -417,15 +423,26 @@ def test_episode_boundary_resets_only_diagnostic_traces_not_learning_state():
         regime="N",
         scenario=second_scenario,
         training_seed=41001,
-        architecture=architecture,        allow_test_fixture=True,
+        architecture=architecture,
+        allow_test_fixture=True,
     )
 
     assert all(
         len(records) == 0
         for records in architecture.records_by_actor().values()
     )
+    assert second_runner.model.shipments.total_in_transit() == 0.0
+    assert second_runner.model.importer.inventory.total_quantity() == 0.0
+    assert all(
+        retailer.inventory.total_quantity() == 0.0
+        for retailer in second_runner.model.retailers
+    )
+    assert all(
+        exporter.inventory.total_quantity() == 0.0
+        for exporter in second_runner.model.exporters
+    )
+
     for actor in ACTOR_NAMES:
-        # Constructing the next episode must not reinitialize the learned state.
         for key, value in architecture.agents[actor].network.state_dict().items():
             torch.testing.assert_close(
                 value,
@@ -478,6 +495,30 @@ def test_scientific_contract_exposes_exactly_15_locked_run_keys():
             training_seed=41001,
             config=SimulationConfig(),
             hyperparameters=PPOHyperparameters(clip_range=0.10),
+        )
+
+
+def test_default_boundary_runner_rejects_scientific_contract_drift():
+    config, scenario = tiny_deterministic_smoke_case()
+    with pytest.raises(ValueError, match="1000 Model-0 days"):
+        BoundaryAwareEpisodeRunner(
+            config=config,
+            regime="F",
+            scenario=scenario,
+            training_seed=41001,
+        )
+
+    scientific_config = SimulationConfig()
+    scientific_scenario = generate_scenario(
+        scientific_config,
+        episode_scenario_seed(41001, 0),
+    )
+    with pytest.raises(ValueError, match="pre-registered"):
+        BoundaryAwareEpisodeRunner(
+            config=scientific_config,
+            regime="F",
+            scenario=scientific_scenario,
+            training_seed=99999,
         )
 
 
