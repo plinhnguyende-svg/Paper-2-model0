@@ -313,6 +313,17 @@ class ActorLocalAIDecisionArchitecture:
         for policy in self.exporter_policies:
             policy.before_decision = hook
 
+    def clear_episode_records(self) -> None:
+        """Clear diagnostic decision traces without touching learned state.
+
+        Networks, optimizer state, action RNGs, and PPO shuffle RNGs persist
+        across episodes. Only per-episode trace records are reset so a
+        1000-episode run does not accumulate millions of stale DecisionRecord
+        objects or blur episode boundaries.
+        """
+        for records in self.records_by_actor().values():
+            records.clear()
+
     def records_by_actor(self) -> dict[str, list[DecisionRecord]]:
         return {
             "R1": self.retailer_policies[0].records,
