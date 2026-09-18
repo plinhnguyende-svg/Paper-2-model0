@@ -5,6 +5,7 @@ import json
 import math
 import os
 from pathlib import Path
+import re
 from typing import Iterable
 
 import numpy as np
@@ -195,10 +196,25 @@ def validate_launcher_manifest(manifest: dict) -> None:
         raise ValueError("launcher manifest job id mismatch")
     if manifest.get("locked_training_device") != LOCKED_TRAINING_DEVICE:
         raise ValueError("launcher training device drift")
+    locked_config = locked_simulation_config()
     if manifest["simulation_config_sha256"] != simulation_config_hash(
-        locked_simulation_config()
+        locked_config
     ):
         raise ValueError("launcher manifest does not use the locked baseline config")
+
+    # The generic runner manifest guarantees contiguous indices and locked
+    # episode seeds. The launcher additionally proves that each scenario_id is
+    # the exact immutable scenario generated from that seed and frozen config.
+    for record in manifest["episodes"]:
+        expected = generate_scenario(
+            locked_config,
+            int(record["episode_seed"]),
+        )
+        if record["scenario_id"] != expected.scenario_id:
+            raise ValueError(
+                "launcher manifest scenario_id does not match the locked "
+                "seed/config realization"
+            )
 
 
 def _atomic_write_json(path: Path, value: dict) -> None:
@@ -241,9 +257,19 @@ def _read_diagnostics(path: Path) -> list[dict]:
     return frame.to_dict(orient="records")
 
 
-def _validate_diagnostic_rows(rows: list[dict], completed_count: int) -> None:
+def _validate_diagnostic_rows(
+    rows: list[dict],
+    completed_count: int,
+    *,
+    manifest: dict | None = None,
+) -> None:
     if len(rows) != completed_count:
         raise ValueError("diagnostic row count does not match completed episodes")
+    if manifest is not None:
+        validate_launcher_manifest(manifest)
+        if int(manifest["completed_episode_count"]) != completed_count:
+            raise ValueError("diagnostics and manifest episode counts differ")
+
     for expected_index, row in enumerate(rows):
         if int(row.get("episode_index", -1)) != expected_index:
             raise ValueError("diagnostic episode indices must be contiguous from zero")
@@ -254,16 +280,17 @@ def _validate_diagnostic_rows(rows: list[dict], completed_count: int) -> None:
         if int(row.get("non_finite_event_count", -1)) != 0:
             raise ValueError("successful episode diagnostics require zero non-finite events")
 
+        if manifest is not None:
+            expected = manifest["episodes"][expected_index]
+            if int(row.get("episode_seed", -1)) != int(expected["episode_seed"]):
+                raise ValueError("diagnostic episode seed does not match manifest")
+            if str(row["scenario_id"]) != str(expected["scenario_id"]):
+                raise ValueError("diagnostic scenario_id does not match manifest")
+
 
 def _episode_file_count(path: Path) -> int | None:
-    stem = path.stem
-    if "_episode_" not in stem:
-        return None
-    suffix = stem.rsplit("_episode_", 1)[1]
-    try:
-        return int(suffix)
-    except ValueError:
-        return None
+    match = re.search(r"_episode_(\d{4})(?:\.|$)", path.name)
+    return int(match.group(1)) if match else None
 
 
 class LauncherRunStore:
@@ -332,8 +359,15 @@ class LauncherRunStore:
         if self.state_dir.exists():
             for path in self.state_dir.iterdir():
                 count = _episode_file_count(path)
-                if count is not None and count > committed_count:
+                if path.name.endswith(".tmp") or (
+                    count is not None and count > committed_count
+                ):
                     path.unlink(missing_ok=True)
+
+        diagnostics_temp = self.diagnostics_path.with_name(
+            self.diagnostics_path.name + ".tmp"
+        )
+        diagnostics_temp.unlink(missing_ok=True)
 
         rows = _read_diagnostics(self.diagnostics_path)
         if rows:
@@ -382,7 +416,11 @@ class LauncherRunStore:
             raise ValueError("latest pointer manifest hash mismatch")
 
         diagnostics = _read_diagnostics(self.diagnostics_path)
-        _validate_diagnostic_rows(diagnostics, completed)
+        _validate_diagnostic_rows(
+            diagnostics,
+            completed,
+            manifest=manifest,
+        )
 
         if completed == 0:
             if pointer["checkpoint_file"] is not None:
@@ -429,7 +467,11 @@ class LauncherRunStore:
         completed = int(manifest["completed_episode_count"])
         if not 1 <= completed <= TRAINING_EPISODES:
             raise ValueError("episode-boundary commit count is outside locked budget")
-        _validate_diagnostic_rows(diagnostics, completed)
+        _validate_diagnostic_rows(
+            diagnostics,
+            completed,
+            manifest=manifest,
+        )
 
         pointer = self._latest_pointer()
         previous = int(pointer["completed_episode_count"])
