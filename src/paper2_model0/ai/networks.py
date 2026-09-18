@@ -62,6 +62,14 @@ class GaussianActorCritic(nn.Module):
         observation = self._validate_observation(observation)
         mean = self.actor_mean(observation)
         std = self.log_std.exp().expand_as(mean)
+        if not torch.isfinite(mean).all() or not torch.isfinite(std).all():
+            raise FloatingPointError(
+                "actor distribution contains non-finite mean or standard deviation"
+            )
+        if torch.any(std <= 0):
+            raise FloatingPointError(
+                "actor distribution standard deviation must remain positive"
+            )
         return Normal(mean, std)
 
     def value(self, observation: torch.Tensor) -> torch.Tensor:
