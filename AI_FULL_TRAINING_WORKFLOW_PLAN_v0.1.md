@@ -57,18 +57,37 @@ The workflow pins:
 
 - Ubuntu 24.04;
 - Python 3.12.14;
+- pip 26.2.1;
 - NumPy 2.5.3;
 - pandas 3.0.6;
 - PyYAML 6.0.3;
-- PyTorch 2.14.0.
+- PyTorch 2.14.0;
+- the currently resolved transitive scientific dependencies in
+  `constraints-ai-training-v0.1.txt`.
 
-The entrypoint additionally enables deterministic PyTorch algorithms and fixes
-CPU thread counts to one.
+The GitHub Actions used for checkout, Python setup, artifact download and
+artifact upload are pinned to full commit SHAs rather than mutable major tags.
 
-Execution provenance records both:
+The entrypoint additionally enables deterministic PyTorch algorithms, fixes CPU
+thread counts to one, and fails fast if the direct runtime versions differ from
+the frozen versions.
+
+Each job records a sorted `pip freeze --all` snapshot and SHA-256 digest.
+A resumed job must reproduce that same runtime digest.
+
+Execution provenance records:
 
 - the frozen launcher SHA used by the scientific manifest;
-- the actual workflow execution SHA/run id/run attempt.
+- the actual workflow execution SHA/run id/run attempt;
+- the frozen workflow ref and repository;
+- the GitHub runner image identifiers exposed by the runner;
+- SHA-256 hashes of the workflow, operational entrypoint, direct requirements
+  and transitive constraints;
+- the complete normalized pip-freeze digest.
+
+The Ubuntu hosted-runner image label is versioned but not an immutable container
+digest. Therefore v0.1 claims version-pinned and provenance-recorded
+reproducibility, not cross-image bitwise identity.
 
 ## Durable recovery across ephemeral GitHub runners
 
@@ -115,6 +134,14 @@ There is no fallback seed and no post-hoc extension.
 A timed-out or failed job is resumed only from a previously committed episode
 boundary.
 
+The 300-minute training-step timeout is nested inside a 330-minute job timeout,
+leaving an upload window for the `if: always()` recovery-artifact step. A
+complete host-level runner loss can still lose progress made since the most
+recent uploaded artifact; it cannot change the scientific trajectory, because a
+subsequent run either resumes from the last durable committed artifact or, when
+no prior durable artifact exists, deterministically restarts the same frozen
+job from episode zero.
+
 ## Workflow freeze gate
 
 Before this workflow may be manually dispatched:
@@ -123,7 +150,9 @@ Before this workflow may be manually dispatched:
 2. CI must prove there is no push, pull-request, or schedule trigger;
 3. artifact restore/upload semantics must be audited;
 4. environment/version locks must be audited;
-5. the workflow and entrypoint must be frozen in a separate merge commit.
+5. the frozen runtime installation must pass a dedicated non-training CI gate;
+6. the workflow and entrypoint must be frozen and a dedicated immutable-in-use
+   workflow branch created from the audited head.
 
 \[
 \boxed{
