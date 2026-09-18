@@ -210,16 +210,16 @@ class SupplyChainModel:
         current_demand = tuple(float(x) for x in self.scenario.consumer_demand[day])
         fulfilled = []
         lost = []
-        for retailer_index, (retailer, demand) in enumerate(
-            zip(self.retailers, current_demand)
-        ):
+        for retailer, demand in zip(self.retailers, current_demand):
             f, l = retailer.serve_consumer_demand(demand)
             fulfilled.append(f)
             lost.append(l)
             self.cumulative_consumed += f
 
         retailer_orders = []
-        for retailer, demand in zip(self.retailers, current_demand):
+        for retailer_index, (retailer, demand) in enumerate(
+            zip(self.retailers, current_demand)
+        ):
             obs = RetailerObservation(
                 current_day=day,
                 current_consumer_demand=demand,
