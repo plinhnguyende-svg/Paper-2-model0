@@ -76,6 +76,8 @@ Define retailer mean demand by (lambda_r) and aggregate mean demand by
 
 Quantities are normalized by these fixed model scales. No running normalization fitted on evaluation data is permitted.
 
+Known/value masks keep the learnable input dimension identical across N, S, and F. The network architecture therefore does not change with the information regime; only legally available values change.
+
 The field `current_day` is intentionally excluded from the learnable vector so that the policy cannot exploit the finite evaluation horizon.
 
 ### 4.1 Retailer (r)
@@ -397,7 +399,7 @@ The five pre-registered training seeds are:
 41001,41002,41003,41004,41005.
 ]
 
-For a given training seed and episode index, N, S, and F use the same exogenous demand and availability scenario seed sequence. Network initialization uses the same seed convention across regimes.
+For a given training seed and episode index, N, S, and F use the same exogenous demand and availability scenario seed sequence. Network architecture, initialization convention, optimizer, and hyperparameters are identical across regimes.
 
 There is no early stopping and no "best checkpoint" selection based on evaluation outcomes. The fixed-budget final checkpoint is the policy used for final evaluation.
 
