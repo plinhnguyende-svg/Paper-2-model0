@@ -14,6 +14,7 @@ from paper2_model0.ai import (
     CHECKPOINT_VERSION,
     EVALUATION_MASTER_SEED,
     INFORMATION_REGIMES,
+    PPOHyperparameters,
     SCENARIO_SEED_PROTOCOL_VERSION,
     TRAINING_EPISODES,
     TRAINING_SEEDS,
@@ -23,12 +24,18 @@ from paper2_model0.ai import (
     episode_scenario_seed,
     episode_seed_schedule,
     load_training_checkpoint,
+    run_manifest_hash,
     save_training_checkpoint,
     tiny_deterministic_smoke_case,
+    training_run_keys,
     validate_run_manifest,
+    validate_scientific_training_contract,
 )
 from paper2_model0.config import SimulationConfig
 from paper2_model0.domain.scenario import deterministic_scenario, generate_scenario
+
+
+SOURCE_COMMIT_SHA = "e0b09d602518b546d05696bee853855aae608ee6"
 
 
 def _second_smoke_scenario(config: SimulationConfig):
@@ -148,6 +155,7 @@ def test_manifest_is_complete_hash_bound_and_schedule_checked():
         regime="S",
         training_seed=41001,
         config=config,
+        source_commit_sha=SOURCE_COMMIT_SHA,
         episode_records=[record],
     )
 
@@ -180,6 +188,7 @@ def test_scientific_manifest_rejects_horizon_drift():
             regime="N",
             training_seed=41001,
             config=config,
+            source_commit_sha=SOURCE_COMMIT_SHA,
         )
 
 
@@ -434,3 +443,100 @@ def test_episode_boundary_resets_only_diagnostic_traces_not_learning_state():
         len(records) == config.simulation_horizon_days
         for records in architecture.records_by_actor().values()
     )
+
+
+def test_scientific_contract_exposes_exactly_15_locked_run_keys():
+    assert training_run_keys() == tuple(
+        (regime, seed)
+        for regime in ("N", "S", "F")
+        for seed in (41001, 41002, 41003, 41004, 41005)
+    )
+    assert len(training_run_keys()) == 15
+
+    validate_scientific_training_contract(
+        regime="F",
+        training_seed=41005,
+        config=SimulationConfig(),
+        hyperparameters=PPOHyperparameters(),
+    )
+
+    with pytest.raises(ValueError, match="pre-registered"):
+        validate_scientific_training_contract(
+            regime="F",
+            training_seed=99999,
+            config=SimulationConfig(),
+        )
+    with pytest.raises(ValueError, match="1000 Model-0 days"):
+        validate_scientific_training_contract(
+            regime="F",
+            training_seed=41001,
+            config=SimulationConfig(simulation_horizon_days=999),
+        )
+    with pytest.raises(ValueError, match="locked"):
+        validate_scientific_training_contract(
+            regime="F",
+            training_seed=41001,
+            config=SimulationConfig(),
+            hyperparameters=PPOHyperparameters(clip_range=0.10),
+        )
+
+
+def test_scientific_checkpoint_is_cryptographically_bound_to_manifest(tmp_path):
+    config = SimulationConfig()
+    architecture = ActorLocalAIDecisionArchitecture(
+        config,
+        training_seed=41001,
+        deterministic=False,
+    )
+    manifest = build_run_manifest(
+        regime="N",
+        training_seed=41001,
+        config=config,
+        source_commit_sha=SOURCE_COMMIT_SHA,
+    )
+    path = save_training_checkpoint(
+        tmp_path / "scientific.pt",
+        architecture=architecture,
+        regime="N",
+        completed_episode_count=0,
+        config=config,
+        manifest=manifest,
+    )
+
+    resumed, metadata = load_training_checkpoint(
+        path,
+        config=config,
+        expected_regime="N",
+        expected_training_seed=41001,
+        expected_manifest=manifest,
+    )
+    assert metadata["run_manifest_sha256"] == run_manifest_hash(manifest)
+    _assert_actor_states_equal(architecture, resumed)
+
+    tampered = deepcopy(manifest)
+    tampered["source_commit_sha"] = "1" * 40
+    with pytest.raises(ValueError, match="run-manifest hash"):
+        load_training_checkpoint(
+            path,
+            config=config,
+            expected_regime="N",
+            expected_training_seed=41001,
+            expected_manifest=tampered,
+        )
+
+
+def test_scientific_checkpoint_cannot_omit_manifest(tmp_path):
+    config = SimulationConfig()
+    architecture = ActorLocalAIDecisionArchitecture(
+        config,
+        training_seed=41001,
+        deterministic=False,
+    )
+    with pytest.raises(ValueError, match="requires its run manifest"):
+        save_training_checkpoint(
+            tmp_path / "unbound.pt",
+            architecture=architecture,
+            regime="N",
+            completed_episode_count=0,
+            config=config,
+        )
