@@ -1,24 +1,28 @@
 # AI Specification Lock Checklist v0.1
 
-This checklist must be completed before any AI training run.
+Scientific audit status before merge:
 
-- [ ] PR contains specification/configuration only; no training output or learned weights.
-- [ ] PR #3 actor-isolated firewall remains unchanged.
-- [ ] Decision nodes are fixed.
-- [ ] Observation vectors and unknown-state encoding are fixed.
-- [ ] Action transforms and feasibility masks are fixed.
-- [ ] Reward and terminal penalty are fixed.
-- [ ] PPO architecture and hyperparameters are fixed.
-- [ ] Training seeds and fixed training budget are fixed.
-- [ ] Held-out evaluation master seed and replication count are fixed.
-- [ ] Primary outcomes and interaction estimands are fixed.
-- [ ] Hierarchical bootstrap rule is fixed.
-- [ ] CI passes.
-- [ ] Specification PR is reviewed and merged.
-- [ ] Merge commit is recorded as the sole base for the AI-training implementation branch.
+- [x] PR contains specification/configuration/audit/contract tests only; no training output or learned weights.
+- [x] PR #3 actor-isolated firewall remains unchanged.
+- [x] Learnable decision nodes are fixed.
+- [x] Importer allocation remains the frozen N/S/F institutional rule.
+- [x] Observation vectors and unknown-state encoding are fixed.
+- [x] Forecast-state transition is fixed and identical to RuleBased.
+- [x] Action transforms and bounds are fixed.
+- [x] Reward and terminal penalty are fixed.
+- [x] PPO architecture and hyperparameters are fixed.
+- [x] Training seeds and fixed training budget are fixed.
+- [x] Training-stability diagnostic is fixed.
+- [x] Held-out evaluation master seed and replication count are fixed.
+- [x] Primary outcomes and interaction estimands are fixed.
+- [x] Hierarchical bootstrap and multiplicity rule are fixed.
+- [x] Scientific audit is recorded.
+- [x] CI passes on the audited branch.
+- [ ] PR #4 is merged into \`main\`.
+- [ ] Merge commit is recorded as the sole base for the AI implementation branch.
 
-Until every item is satisfied, the project remains under:
+Until the final two items are completed:
 
-[
+\[
 \boxed{\text{NO AI TRAINING RUNS}}
-]
+\]
