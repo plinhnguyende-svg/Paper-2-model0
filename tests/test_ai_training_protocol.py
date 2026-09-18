@@ -432,14 +432,34 @@ def test_episode_boundary_resets_only_diagnostic_traces_not_learning_state():
         for records in architecture.records_by_actor().values()
     )
     assert second_runner.model.shipments.total_in_transit() == 0.0
-    assert second_runner.model.importer.inventory.total_quantity() == 0.0
-    assert all(
-        retailer.inventory.total_quantity() == 0.0
-        for retailer in second_runner.model.retailers
+
+    # Model 0 episodes reset to their frozen non-zero initial-stock benchmark,
+    # not to empty inventories.
+    aggregate_mean = float(sum(config.retailer_mean_demand))
+    assert second_runner.model.importer.inventory.total_quantity() == pytest.approx(
+        (config.exporter_to_importer_lead_time_days + 1) * aggregate_mean
     )
-    assert all(
-        exporter.inventory.total_quantity() == 0.0
+    assert [
+        retailer.inventory.total_quantity()
+        for retailer in second_runner.model.retailers
+    ] == pytest.approx(
+        [
+            (config.importer_to_retailer_lead_time_days + 1) * mean
+            for mean in config.retailer_mean_demand
+        ]
+    )
+    assert [
+        exporter.inventory.total_quantity()
         for exporter in second_runner.model.exporters
+    ] == pytest.approx(
+        [
+            0.5
+            * aggregate_mean
+            * (config.exporter_to_importer_lead_time_days + 1),
+            0.5
+            * aggregate_mean
+            * (config.exporter_to_importer_lead_time_days + 1),
+        ]
     )
     assert [
         retailer.demand_forecast
