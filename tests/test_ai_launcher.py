@@ -11,6 +11,7 @@ from paper2_model0.ai.launcher import (
     FULL_TRAINING_AUTH_ENV,
     FROZEN_RUNNER_BASE,
     LAUNCHER_PROTOCOL_VERSION,
+    LOCKED_TRAINING_DEVICE,
     LauncherRunStore,
     build_dry_run_contract,
     build_launcher_manifest,
@@ -21,6 +22,7 @@ from paper2_model0.ai.launcher import (
     locked_job_registry,
     locked_simulation_config,
     require_full_training_authorization,
+    validate_launcher_device,
 )
 from paper2_model0.ai.training_protocol import (
     TRAINING_EPISODES,
@@ -52,6 +54,7 @@ def test_dry_run_registry_is_exactly_15_unique_locked_jobs():
     assert plan["episode_horizon_days"] == 1000
     assert plan["full_training_authorized"] is False
     assert plan["frozen_runner_base"] == FROZEN_RUNNER_BASE
+    assert plan["locked_training_device"] == LOCKED_TRAINING_DEVICE
 
     for row in plan["jobs"]:
         seed = row["training_seed"]
@@ -70,6 +73,12 @@ def test_launcher_rejects_arbitrary_job_and_config_drift():
             config=drifted,
             source_commit_sha=SOURCE_SHA,
         )
+
+
+def test_launcher_device_is_locked_to_cpu():
+    validate_launcher_device("cpu")
+    with pytest.raises(ValueError, match="CPU"):
+        validate_launcher_device("cuda")
 
 
 def test_manifest_exists_before_episode_zero_and_resume_is_exact_next(tmp_path):
