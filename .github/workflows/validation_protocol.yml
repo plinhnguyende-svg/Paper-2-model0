@@ -1,0 +1,94 @@
+name: Validation Protocol
+
+on:
+  push:
+    branches: [verification-validation-v0.1]
+    paths:
+      - "src/paper2_model0/validation/**"
+      - "scripts/run_validation_protocol.py"
+      - "experiments/validation_protocol_v0.1.yaml"
+      - ".github/workflows/validation_protocol.yml"
+  workflow_dispatch:
+    inputs:
+      stage:
+        description: "Validation stage to run"
+        required: true
+        default: "warmup"
+        type: choice
+        options:
+          - warmup
+          - replications
+          - seeds
+          - ofat
+          - phase
+      factor:
+        description: "OFAT factor key (required only for ofat)"
+        required: false
+        type: string
+      map_index:
+        description: "Phase-map index (required only for phase)"
+        required: false
+        default: "0"
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  validation:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install package
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+
+      - name: Resolve stage
+        id: resolve
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "stage=${{ inputs.stage }}" >> "$GITHUB_OUTPUT"
+            echo "factor=${{ inputs.factor }}" >> "$GITHUB_OUTPUT"
+            echo "map_index=${{ inputs.map_index }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "stage=warmup" >> "$GITHUB_OUTPUT"
+            echo "factor=" >> "$GITHUB_OUTPUT"
+            echo "map_index=0" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Run validation stage
+        shell: bash
+        run: |
+          STAGE="${{ steps.resolve.outputs.stage }}"
+          FACTOR="${{ steps.resolve.outputs.factor }}"
+          MAP_INDEX="${{ steps.resolve.outputs.map_index }}"
+
+          CMD=(python scripts/run_validation_protocol.py "$STAGE")
+          if [ "$STAGE" = "ofat" ]; then
+            if [ -z "$FACTOR" ]; then
+              echo "OFAT requires a factor input" >&2
+              exit 2
+            fi
+            CMD+=(--factor "$FACTOR")
+          fi
+          if [ "$STAGE" = "phase" ]; then
+            CMD+=(--map-index "$MAP_INDEX")
+          fi
+          "${CMD[@]}"
+
+      - name: Upload validation outputs
+        uses: actions/upload-artifact@v4
+        with:
+          name: validation-${{ steps.resolve.outputs.stage }}-${{ github.run_id }}
+          path: outputs/validation_protocol_v0.1/
+          if-no-files-found: error
