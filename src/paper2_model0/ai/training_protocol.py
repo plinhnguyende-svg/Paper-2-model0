@@ -3,9 +3,13 @@ from __future__ import annotations
 from dataclasses import asdict
 import hashlib
 import json
+import platform
 from pathlib import Path
+import sys
 from typing import Iterable
 
+import numpy as np
+import pandas as pd
 import torch
 
 from paper2_model0.config import SimulationConfig
@@ -47,6 +51,19 @@ def simulation_config_hash(config: SimulationConfig) -> str:
     return hashlib.sha256(
         _canonical_json(simulation_config_payload(config)).encode("utf-8")
     ).hexdigest()
+
+
+def runtime_fingerprint() -> dict:
+    return {
+        "python_version": platform.python_version(),
+        "python_implementation": platform.python_implementation(),
+        "numpy_version": np.__version__,
+        "pandas_version": pd.__version__,
+        "torch_version": torch.__version__,
+        "platform_system": platform.system(),
+        "platform_machine": platform.machine(),
+        "byteorder": sys.byteorder,
+    }
 
 
 def _validate_commit_sha(commit_sha: str) -> str:
@@ -198,6 +215,7 @@ def build_run_manifest(
         "frozen_smoke_base": FROZEN_SMOKE_BASE,
         "ai_spec_base": AI_SPEC_BASE,
         "source_commit_sha": source_sha,
+        "runtime_fingerprint": runtime_fingerprint(),
         "regime": regime,
         "training_seed": seed,
         "pre_registered_training_seeds": list(TRAINING_SEEDS),
@@ -223,6 +241,7 @@ def validate_run_manifest(manifest: dict) -> None:
         "frozen_smoke_base",
         "ai_spec_base",
         "source_commit_sha",
+        "runtime_fingerprint",
         "regime",
         "training_seed",
         "pre_registered_training_seeds",
@@ -246,6 +265,12 @@ def validate_run_manifest(manifest: dict) -> None:
     if manifest["ai_spec_base"] != AI_SPEC_BASE:
         raise ValueError("AI specification base drift")
     _validate_commit_sha(manifest["source_commit_sha"])
+    runtime = manifest["runtime_fingerprint"]
+    required_runtime = set(runtime_fingerprint())
+    if not isinstance(runtime, dict) or set(runtime) != required_runtime:
+        raise ValueError("invalid runtime fingerprint")
+    if any(not str(runtime[key]) for key in required_runtime):
+        raise ValueError("runtime fingerprint fields must be non-empty")
     if manifest["checkpoint_version"] != CHECKPOINT_VERSION:
         raise ValueError("checkpoint version drift")
     if manifest["scenario_seed_protocol_version"] != SCENARIO_SEED_PROTOCOL_VERSION:
@@ -463,6 +488,10 @@ def load_training_checkpoint(
                 "scientific checkpoint resume requires the matching run manifest"
             )
         validate_run_manifest(expected_manifest)
+        if expected_manifest["runtime_fingerprint"] != runtime_fingerprint():
+            raise ValueError(
+                "scientific checkpoint runtime differs from the recorded manifest"
+            )
         if run_manifest_hash(expected_manifest) != manifest_digest:
             raise ValueError("checkpoint run-manifest hash mismatch")
         if expected_manifest["regime"] != expected_regime:
