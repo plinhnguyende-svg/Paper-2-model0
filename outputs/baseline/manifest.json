@@ -1,0 +1,29 @@
+{
+  "model_version": "model0_v0.1",
+  "configuration_hash": "0d02ea82f4971bc9",
+  "master_seed": 20260917,
+  "number_of_replications": 50,
+  "regimes": [
+    "N",
+    "S",
+    "F"
+  ],
+  "config": {
+    "number_of_retailers": 3,
+    "simulation_horizon_days": 1000,
+    "warmup_days": 200,
+    "shelf_life_days": 7,
+    "exporter_to_importer_lead_time_days": 2,
+    "importer_to_retailer_lead_time_days": 1,
+    "retailer_mean_demand": [
+      10.0,
+      10.0,
+      10.0
+    ],
+    "demand_forecast_smoothing_weight": 0.3,
+    "exporter_availability_probability": [
+      0.8,
+      0.8
+    ]
+  }
+}
