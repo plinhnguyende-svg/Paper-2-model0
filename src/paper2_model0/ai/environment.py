@@ -289,7 +289,8 @@ def physical_team_rewards(
         raise ValueError("aggregate_mean_demand must be positive")
     required = {
         "aggregate_lost_sales",
-        "total_waste",
+        "on_hand_waste",
+        "transit_waste",
         "total_on_hand_inventory",
         "total_pipeline_inventory",
     }
@@ -300,16 +301,21 @@ def physical_team_rewards(
         raise ValueError("period_df must be non-empty")
 
     lost_sales = period_df["aggregate_lost_sales"].to_numpy(dtype=float)
-    waste = period_df["total_waste"].to_numpy(dtype=float)
+    on_hand_waste = period_df["on_hand_waste"].to_numpy(dtype=float)
+    transit_waste = period_df["transit_waste"].to_numpy(dtype=float)
 
-    # Model 0 serves consumer demand before the day's replenishment/readiness
-    # decisions. Therefore lost_sales[t] is pre-action with respect to actions
-    # chosen on day t. Attach next-day lost sales to the current transition,
-    # while same-day waste remains post-action. Day-0 lost sales are an initial
-    # condition and are not assigned to an action that did not cause them.
-    rewards = -waste / float(aggregate_mean_demand)
+    # Timing in Model 0:
+    #   start of day: receive shipments -> transit waste; serve demand -> lost sales
+    #   then choose replenishment/readiness actions
+    #   end of day: age on-hand inventory -> on-hand waste.
+    # Therefore current-day transit waste and lost sales are pre-action. Attach
+    # next-day pre-action consequences to the current decision transition,
+    # while current-day on-hand waste is post-action.
+    rewards = -on_hand_waste / float(aggregate_mean_demand)
     if len(rewards) > 1:
-        rewards[:-1] -= lost_sales[1:] / float(aggregate_mean_demand)
+        rewards[:-1] -= (
+            lost_sales[1:] + transit_waste[1:]
+        ) / float(aggregate_mean_demand)
 
     rewards = np.asarray(rewards, dtype=np.float64)
     rewards[-1] -= float(
