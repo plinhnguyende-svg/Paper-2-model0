@@ -140,6 +140,7 @@ def test_actor_rollout_buffer_stores_only_local_ppo_quantities():
         "rewards",
         "values",
         "dones",
+        "policy_masks",
     }
     assert not hasattr(buffer, "scenario")
     assert not hasattr(buffer, "regime")
@@ -232,3 +233,54 @@ def test_ppo_update_rejects_nonfinite_training_data():
     )
     with pytest.raises(ValueError, match="non-finite"):
         updater.update(batch)
+
+
+def test_fully_masked_policy_batch_updates_critic_but_not_actor():
+    torch.manual_seed(321)
+    model = GaussianActorCritic(observation_dim=7, action_dim=1)
+    updater = PPOUpdater(model, shuffle_seed=1234)
+
+    observations = torch.randn(8, 7)
+    with torch.no_grad():
+        actions, old_log_probs, values = model.act(
+            observations,
+            deterministic=True,
+        )
+
+    batch = PPOTrainingBatch(
+        observations=observations,
+        actions=actions.detach(),
+        old_log_probs=old_log_probs.detach(),
+        returns=(values.detach() + 1.0),
+        advantages=torch.ones(8),
+        policy_mask=torch.zeros(8, dtype=torch.bool),
+    )
+
+    actor_before = [
+        p.detach().clone()
+        for p in model.actor_mean.parameters()
+    ]
+    log_std_before = model.log_std.detach().clone()
+    critic_before = [
+        p.detach().clone()
+        for p in model.critic.parameters()
+    ]
+
+    stats = updater.update(batch)
+
+    actor_after = list(model.actor_mean.parameters())
+    critic_after = list(model.critic.parameters())
+
+    assert all(
+        torch.equal(before, after.detach())
+        for before, after in zip(actor_before, actor_after)
+    )
+    assert torch.equal(log_std_before, model.log_std.detach())
+    assert any(
+        not torch.equal(before, after.detach())
+        for before, after in zip(critic_before, critic_after)
+    )
+    assert stats.policy_loss == pytest.approx(0.0)
+    assert stats.entropy == pytest.approx(0.0)
+    assert stats.approximate_kl == pytest.approx(0.0)
+    assert stats.clip_fraction == pytest.approx(0.0)

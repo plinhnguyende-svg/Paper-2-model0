@@ -39,6 +39,7 @@ class PPOTrainingBatch:
     old_log_probs: torch.Tensor
     returns: torch.Tensor
     advantages: torch.Tensor
+    policy_mask: torch.Tensor | None = None
 
     def validate(self, observation_dim: int, action_dim: int) -> int:
         tensors = (
@@ -60,6 +61,9 @@ class PPOTrainingBatch:
         for tensor in (self.old_log_probs, self.returns, self.advantages):
             if tensor.ndim != 1 or tensor.shape[0] != n:
                 raise ValueError("invalid scalar-vector batch shape")
+        if self.policy_mask is not None:
+            if self.policy_mask.ndim != 1 or self.policy_mask.shape[0] != n:
+                raise ValueError("invalid policy-mask batch shape")
         return n
 
 
@@ -97,6 +101,7 @@ class ActorRolloutBuffer:
         self.rewards: list[float] = []
         self.values: list[float] = []
         self.dones: list[bool] = []
+        self.policy_masks: list[bool] = []
 
     def __len__(self) -> int:
         return len(self.rewards)
@@ -109,6 +114,7 @@ class ActorRolloutBuffer:
         reward: float,
         value: float,
         done: bool,
+        policy_active: bool = True,
     ) -> None:
         observation = np.asarray(observation, dtype=np.float32)
         action = np.asarray(action, dtype=np.float32)
@@ -128,6 +134,7 @@ class ActorRolloutBuffer:
         self.rewards.append(float(reward))
         self.values.append(float(value))
         self.dones.append(bool(done))
+        self.policy_masks.append(bool(policy_active))
 
     def training_batch(
         self,
@@ -162,6 +169,9 @@ class ActorRolloutBuffer:
             ),
             advantages=torch.as_tensor(
                 advantages, dtype=torch.float32, device=device
+            ),
+            policy_mask=torch.as_tensor(
+                self.policy_masks, dtype=torch.bool, device=device
             ),
         )
 
@@ -258,22 +268,34 @@ class PPOUpdater:
                 old_log_prob = batch.old_log_probs[index]
                 returns = batch.returns[index]
                 advantages = batch.advantages[index]
+                policy_mask = (
+                    torch.ones_like(advantages, dtype=torch.bool)
+                    if batch.policy_mask is None
+                    else batch.policy_mask[index].bool()
+                )
 
                 new_log_prob, entropy, values = self.model.evaluate_actions(
                     obs, actions
                 )
                 log_ratio = new_log_prob - old_log_prob
                 ratio = log_ratio.exp()
-                unclipped = ratio * advantages
-                clipped = torch.clamp(
-                    ratio,
-                    1.0 - hp.clip_range,
-                    1.0 + hp.clip_range,
-                ) * advantages
-
-                policy_loss = -torch.min(unclipped, clipped).mean()
                 value_loss = torch.mean((values - returns) ** 2)
-                entropy_mean = entropy.mean()
+
+                if torch.any(policy_mask):
+                    active_ratio = ratio[policy_mask]
+                    active_advantages = advantages[policy_mask]
+                    active_log_ratio = log_ratio[policy_mask]
+                    unclipped = active_ratio * active_advantages
+                    clipped = torch.clamp(
+                        active_ratio,
+                        1.0 - hp.clip_range,
+                        1.0 + hp.clip_range,
+                    ) * active_advantages
+                    policy_loss = -torch.min(unclipped, clipped).mean()
+                    entropy_mean = entropy[policy_mask].mean()
+                else:
+                    policy_loss = values.sum() * 0.0
+                    entropy_mean = values.sum() * 0.0
                 total_loss = (
                     policy_loss
                     + hp.value_loss_coefficient * value_loss
@@ -294,12 +316,24 @@ class PPOUpdater:
                 self.optimizer.step()
 
                 with torch.no_grad():
-                    approximate_kl = ((ratio - 1.0) - log_ratio).mean()
-                    clip_fraction = (
-                        (torch.abs(ratio - 1.0) > hp.clip_range)
-                        .float()
-                        .mean()
-                    )
+                    if torch.any(policy_mask):
+                        active_ratio = ratio[policy_mask]
+                        active_log_ratio = log_ratio[policy_mask]
+                        approximate_kl = (
+                            (active_ratio - 1.0) - active_log_ratio
+                        ).mean()
+                        clip_fraction = (
+                            (torch.abs(active_ratio - 1.0) > hp.clip_range)
+                            .float()
+                            .mean()
+                        )
+                    else:
+                        approximate_kl = torch.zeros(
+                            (), device=values.device
+                        )
+                        clip_fraction = torch.zeros(
+                            (), device=values.device
+                        )
 
                 policy_losses.append(float(policy_loss.detach().cpu()))
                 value_losses.append(float(value_loss.detach().cpu()))

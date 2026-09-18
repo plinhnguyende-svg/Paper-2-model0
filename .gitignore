@@ -8,3 +8,4 @@ __pycache__/
 outputs/scratch/
 *.egg-info/
 outputs/validation_protocol_v0.1/
+outputs/ai_smoke_v0.1/

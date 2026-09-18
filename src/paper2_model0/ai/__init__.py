@@ -34,3 +34,23 @@ __all__ += [
     "build_actor_local_ippo_agents",
     "compute_gae",
 ]
+
+from .environment import (
+    ActorLocalAIDecisionArchitecture,
+    DecisionRecord,
+    SmokeTrainingResult,
+    build_episode_rollout_buffers,
+    physical_team_rewards,
+    run_tiny_smoke_training,
+    tiny_deterministic_smoke_case,
+)
+
+__all__ += [
+    "ActorLocalAIDecisionArchitecture",
+    "DecisionRecord",
+    "SmokeTrainingResult",
+    "build_episode_rollout_buffers",
+    "physical_team_rewards",
+    "run_tiny_smoke_training",
+    "tiny_deterministic_smoke_case",
+]
