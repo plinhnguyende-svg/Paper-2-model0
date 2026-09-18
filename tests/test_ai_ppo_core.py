@@ -140,6 +140,7 @@ def test_actor_rollout_buffer_stores_only_local_ppo_quantities():
         "rewards",
         "values",
         "dones",
+        "policy_masks",
     }
     assert not hasattr(buffer, "scenario")
     assert not hasattr(buffer, "regime")
