@@ -3,7 +3,6 @@ from __future__ import annotations
 import math
 
 import numpy as np
-import pandas as pd
 import pandas.testing as pdt
 import pytest
 
@@ -91,6 +90,7 @@ def test_previous_transition_reward_is_finalized_only_after_next_preaction_bound
         regime="F",
         scenario=scenario,
         training_seed=41001,
+        allow_test_fixture=True,
     )
 
     b0 = runner.model.open_decision_boundary(0)
@@ -105,7 +105,7 @@ def test_previous_transition_reward_is_finalized_only_after_next_preaction_bound
     runner._finalize_previous_at_boundary(b1)
 
     expected = -(
-        row0["on_hand_waste"] + b1.transit_waste + sum(b1.lost)        allow_test_fixture=True,
+        row0["on_hand_waste"] + b1.transit_waste + sum(b1.lost)
     ) / sum(config.retailer_mean_demand)
 
     for buffer in runner.buffers.values():
@@ -121,6 +121,7 @@ def test_nonterminal_chunk_bootstraps_current_legal_state_before_update():
         regime="F",
         scenario=scenario,
         training_seed=41001,
+        allow_test_fixture=True,
     )
     agent = runner.architecture.agents["R1"]
     buffer = runner.buffers["R1"]
@@ -163,7 +164,7 @@ def test_nonterminal_chunk_bootstraps_current_legal_state_before_update():
     assert event.bootstrap_value == pytest.approx(3.5)
     np.testing.assert_allclose(
         captured["bootstrap_observation"],
-        next_observation,        allow_test_fixture=True,
+        next_observation,
     )
     assert float(captured["batch"].returns[-1].cpu()) == pytest.approx(3.5)
 
@@ -175,6 +176,7 @@ def test_terminal_smoke_episode_flushes_with_zero_bootstrap():
         regime="F",
         scenario=scenario,
         training_seed=41001,
+        allow_test_fixture=True,
     )
     result = runner.run_episode()
 
@@ -198,7 +200,7 @@ def test_256_chunk_updates_each_actor_before_its_day_256_action():
         importer_to_retailer_lead_time_days=1,
         retailer_mean_demand=(10.0, 10.0, 10.0),
         demand_forecast_smoothing_weight=0.30,
-        exporter_availability_probability=(1.0, 1.0),        allow_test_fixture=True,
+        exporter_availability_probability=(1.0, 1.0),
     )
     demand = np.full((horizon, 3), 10.0, dtype=float)
     availability = np.asarray(
@@ -212,6 +214,7 @@ def test_256_chunk_updates_each_actor_before_its_day_256_action():
         regime="F",
         scenario=scenario,
         training_seed=41001,
+        allow_test_fixture=True,
     )
     update_call_count = {actor: 0 for actor in ACTOR_NAMES}
     captured_first_masks = {}
@@ -235,9 +238,6 @@ def test_256_chunk_updates_each_actor_before_its_day_256_action():
                     captured_first_masks[actor_name] = (
                         batch.policy_mask.detach().cpu().numpy().copy()
                     )
-                    # The 256-transition update fires inside the pre-action hook.
-                    # This actor has not yet recorded day 256, while actors that
-                    # act earlier in the within-day sequence already have.
                     assert records[actor_name][-1].day == 255
                     for predecessor in expected_current_predecessors[actor_name]:
                         assert records[predecessor][-1].day == 256
@@ -259,7 +259,7 @@ def test_256_chunk_updates_each_actor_before_its_day_256_action():
 
     np.testing.assert_array_equal(
         captured_first_masks["E1"],
-        availability[:256, 0],        allow_test_fixture=True,
+        availability[:256, 0],
     )
     np.testing.assert_array_equal(
         captured_first_masks["E2"],
