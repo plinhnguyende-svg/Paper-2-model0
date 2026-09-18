@@ -62,16 +62,17 @@ def test_locked_1000_day_partition_is_exact():
 def test_decision_boundary_refactor_preserves_rulebased_trajectory():
     config, scenario = _small_case(12)
 
-    ordinary = SupplyChainModel(config, "F", scenario).run()
+    for regime in ("N", "S", "F"):
+        ordinary = SupplyChainModel(config, regime, scenario).run()
 
-    stepped_model = SupplyChainModel(config, "F", scenario)
-    for day in range(config.simulation_horizon_days):
-        boundary = stepped_model.open_decision_boundary(day)
-        assert boundary.day == day
-        stepped_model.complete_decision_boundary(boundary)
-    stepped = stepped_model.recorder.dataframe()
+        stepped_model = SupplyChainModel(config, regime, scenario)
+        for day in range(config.simulation_horizon_days):
+            boundary = stepped_model.open_decision_boundary(day)
+            assert boundary.day == day
+            stepped_model.complete_decision_boundary(boundary)
+        stepped = stepped_model.recorder.dataframe()
 
-    pdt.assert_frame_equal(ordinary, stepped, check_exact=True)
+        pdt.assert_frame_equal(ordinary, stepped, check_exact=True)
 
 
 def test_decision_boundary_cannot_be_opened_twice():
@@ -184,3 +185,66 @@ def test_terminal_smoke_episode_flushes_with_zero_bootstrap():
     assert all(event.transition_count == 8 for event in result.update_events)
     assert all(event.bootstrap_value == 0.0 for event in result.update_events)
     assert all(math.isfinite(event.stats.total_loss) for event in result.update_events)
+
+
+def test_256_chunk_updates_each_actor_before_its_day_256_action():
+    horizon = 257
+    config = SimulationConfig(
+        simulation_horizon_days=horizon,
+        warmup_days=0,
+        shelf_life_days=7,
+        exporter_to_importer_lead_time_days=2,
+        importer_to_retailer_lead_time_days=1,
+        retailer_mean_demand=(10.0, 10.0, 10.0),
+        demand_forecast_smoothing_weight=0.30,
+        exporter_availability_probability=(1.0, 1.0),
+    )
+    demand = np.full((horizon, 3), 10.0, dtype=float)
+    availability = np.ones((horizon, 2), dtype=bool)
+    scenario = deterministic_scenario(demand, availability, seed=812256)
+
+    runner = BoundaryAwareEpisodeRunner(
+        config=config,
+        regime="F",
+        scenario=scenario,
+        training_seed=41001,
+    )
+    update_call_count = {actor: 0 for actor in ACTOR_NAMES}
+
+    expected_current_predecessors = {
+        "R1": (),
+        "R2": ("R1",),
+        "R3": ("R1", "R2"),
+        "BQ": ("R1", "R2", "R3"),
+        "E1": ("R1", "R2", "R3", "BQ"),
+        "E2": ("R1", "R2", "R3", "BQ", "E1"),
+    }
+
+    for actor in ACTOR_NAMES:
+        def make_fake_update(actor_name):
+            def fake_update(batch):
+                update_call_count[actor_name] += 1
+                records = runner.architecture.records_by_actor()
+
+                if update_call_count[actor_name] == 1:
+                    # The 256-transition update fires inside the pre-action hook.
+                    # This actor has not yet recorded day 256, while actors that
+                    # act earlier in the within-day sequence already have.
+                    assert records[actor_name][-1].day == 255
+                    for predecessor in expected_current_predecessors[actor_name]:
+                        assert records[predecessor][-1].day == 256
+
+                return _zero_stats()
+            return fake_update
+
+        runner.architecture.agents[actor].updater.update = make_fake_update(actor)
+
+    result = runner.run_episode()
+
+    assert result.rollout_partition == (256, 1)
+    for actor in ACTOR_NAMES:
+        events = [event for event in result.update_events if event.actor == actor]
+        assert [event.transition_count for event in events] == [256, 1]
+        assert [event.terminal for event in events] == [False, True]
+        assert events[0].boundary_day == 256
+        assert update_call_count[actor] == 2
