@@ -233,6 +233,7 @@ class ActorLocalAIDecisionArchitecture:
         before_actor_decision: BeforeActorDecisionHook | None = None,
     ):
         self.config = config
+        self.training_seed = int(training_seed)
         self.before_actor_decision = before_actor_decision
         self.encoder = AIObservationEncoder.from_config(config)
         self.transformer = BoundedActionTransformer(
@@ -300,6 +301,17 @@ class ActorLocalAIDecisionArchitecture:
             ),
         )
         validate_decision_architecture(self)
+
+    def set_before_actor_decision_hook(
+        self,
+        hook: BeforeActorDecisionHook | None,
+    ) -> None:
+        self.before_actor_decision = hook
+        for policy in self.retailer_policies:
+            policy.before_decision = hook
+        self.importer_policy.before_decision = hook
+        for policy in self.exporter_policies:
+            policy.before_decision = hook
 
     def records_by_actor(self) -> dict[str, list[DecisionRecord]]:
         return {
