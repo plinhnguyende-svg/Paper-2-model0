@@ -205,7 +205,7 @@ def _atomic_write_json(path: Path, value: dict) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     temp = path.with_name(path.name + ".tmp")
     temp.write_text(
-        json.dumps(value, sort_keys=True, indent=2) + "\n",
+        json.dumps(value, sort_keys=True, indent=2, allow_nan=False) + "\n",
         encoding="utf-8",
     )
     os.replace(temp, path)
@@ -221,6 +221,10 @@ def _read_json(path: Path) -> dict:
 def _atomic_write_diagnostics(path: Path, rows: list[dict]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     temp = path.with_name(path.name + ".tmp")
+    if not rows:
+        temp.unlink(missing_ok=True)
+        path.unlink(missing_ok=True)
+        return
     pd.DataFrame(rows).to_csv(temp, index=False)
     os.replace(temp, path)
 
@@ -228,7 +232,10 @@ def _atomic_write_diagnostics(path: Path, rows: list[dict]) -> None:
 def _read_diagnostics(path: Path) -> list[dict]:
     if not path.exists():
         return []
-    frame = pd.read_csv(path)
+    try:
+        frame = pd.read_csv(path)
+    except pd.errors.EmptyDataError:
+        return []
     if len(frame) == 0:
         return []
     return frame.to_dict(orient="records")
@@ -355,6 +362,7 @@ class LauncherRunStore:
         device: str | torch.device = "cpu",
     ) -> LauncherResumeState:
         validate_launcher_config(config)
+        validate_launcher_device(device)
         pointer = self._latest_pointer()
         completed = int(pointer["completed_episode_count"])
         self._recover_orphans(completed)
@@ -428,6 +436,23 @@ class LauncherRunStore:
         if completed != previous + 1:
             raise ValueError("launcher may commit only the exact next episode")
 
+        previous_manifest = _read_json(
+            self.state_dir / str(pointer["manifest_file"])
+        )
+        validate_launcher_manifest(previous_manifest)
+        if run_manifest_hash(previous_manifest) != pointer["run_manifest_sha256"]:
+            raise ValueError("previous launcher pointer manifest hash mismatch")
+        if manifest["source_commit_sha"] != previous_manifest["source_commit_sha"]:
+            raise ValueError("source commit may not change within a training job")
+        if manifest["runtime_fingerprint"] != previous_manifest["runtime_fingerprint"]:
+            raise ValueError("runtime fingerprint may not change within a training job")
+        if manifest["simulation_config_sha256"] != previous_manifest[
+            "simulation_config_sha256"
+        ]:
+            raise ValueError("simulation config may not change within a training job")
+        if manifest["episodes"][:-1] != previous_manifest["episodes"]:
+            raise ValueError("episode manifest history may not be rewritten")
+
         manifest_path = self.manifest_path(completed)
         checkpoint_path = self.checkpoint_path(completed)
         if manifest_path.exists() or checkpoint_path.exists():
@@ -442,7 +467,9 @@ class LauncherRunStore:
         self.diagnostics_path.parent.mkdir(parents=True, exist_ok=True)
 
         manifest_temp.write_text(
-            json.dumps(manifest, sort_keys=True, indent=2) + "\n",
+            json.dumps(
+                manifest, sort_keys=True, indent=2, allow_nan=False
+            ) + "\n",
             encoding="utf-8",
         )
         save_training_checkpoint(
@@ -617,7 +644,7 @@ def compute_training_stability(diagnostics: Iterable[dict]) -> dict:
     final_mean = float(final.mean())
 
     if earlier_mean == 0.0:
-        relative_change = 0.0 if final_mean == 0.0 else float("inf")
+        relative_change = 0.0 if final_mean == 0.0 else None
     else:
         relative_change = abs((final_mean - earlier_mean) / earlier_mean)
 
@@ -635,7 +662,8 @@ def compute_training_stability(diagnostics: Iterable[dict]) -> dict:
     ci_high = slope + ci_half_width
 
     stable = bool(
-        relative_change <= 0.05
+        relative_change is not None
+        and relative_change <= 0.05
         and ci_low <= 0.0 <= ci_high
     )
     return {
@@ -644,6 +672,7 @@ def compute_training_stability(diagnostics: Iterable[dict]) -> dict:
         "mean_reward_episodes_601_800": earlier_mean,
         "mean_reward_episodes_801_1000": final_mean,
         "absolute_relative_mean_change": relative_change,
+        "relative_mean_change_defined": relative_change is not None,
         "relative_mean_change_threshold": 0.05,
         "final_window_slope": slope,
         "final_window_slope_standard_error": slope_standard_error,
