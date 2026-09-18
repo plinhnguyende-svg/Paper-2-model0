@@ -79,7 +79,7 @@ def validate_frozen_runtime_versions() -> None:
         "numpy": np.__version__,
         "pandas": pd.__version__,
         "pyyaml": yaml.__version__,
-        "torch": torch.__version__,
+        "torch": torch.__version__.split("+", 1)[0],
     }
     if observed != expected:
         raise RuntimeError(
