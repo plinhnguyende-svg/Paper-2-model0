@@ -237,6 +237,22 @@ class PPOUpdater:
         self._shuffle_generator = torch.Generator(device="cpu")
         self._shuffle_generator.manual_seed(int(shuffle_seed))
 
+    def checkpoint_state(self) -> dict:
+        """Crash-recovery state required for deterministic PPO continuation."""
+        return {
+            "optimizer": self.optimizer.state_dict(),
+            "shuffle_generator_state": self._shuffle_generator.get_state().clone(),
+        }
+
+    def load_checkpoint_state(self, state: dict) -> None:
+        if set(state) != {"optimizer", "shuffle_generator_state"}:
+            raise ValueError("invalid PPO updater checkpoint state")
+        self.optimizer.load_state_dict(state["optimizer"])
+        generator_state = state["shuffle_generator_state"]
+        if not isinstance(generator_state, torch.Tensor):
+            raise ValueError("shuffle generator state must be a tensor")
+        self._shuffle_generator.set_state(generator_state.cpu())
+
     def update(self, batch: PPOTrainingBatch) -> PPOUpdateStats:
         hp = self.hyperparameters
         n = batch.validate(
