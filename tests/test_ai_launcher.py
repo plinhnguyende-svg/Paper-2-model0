@@ -446,20 +446,40 @@ def test_full_training_gate_requires_explicit_frozen_launcher_sha(monkeypatch):
     require_full_training_authorization(SOURCE_SHA)
 
 
-def test_repository_has_no_hidden_full_training_entrypoint_before_freeze():
-    workflow = Path(".github/workflows/ai_launcher_gate.yml").read_text(
+def test_repository_has_only_explicit_full_training_entrypoints_after_launcher_freeze():
+    launcher_gate = Path(".github/workflows/ai_launcher_gate.yml").read_text(
         encoding="utf-8"
     )
-    assert "run_ai_launcher_dry_run.py" in workflow
-    assert "matrix:" not in workflow
+    assert "run_ai_launcher_dry_run.py" in launcher_gate
+    assert "matrix:" not in launcher_gate
+
+    explicit_workflow = Path(".github/workflows/ai_full_training_v0.1.yml")
+    explicit_script = Path("scripts/run_ai_full_training_job.py")
+    allowed_paths = {explicit_workflow, explicit_script}
 
     candidate_paths = [
         *Path(".github/workflows").glob("*.yml"),
         *Path(".github/workflows").glob("*.yaml"),
         *Path("scripts").glob("*.py"),
     ]
+
+    function_paths = set()
+    authorization_paths = set()
+    frozen_sha_paths = set()
     for path in candidate_paths:
         text = path.read_text(encoding="utf-8")
-        assert "run_locked_training_job" not in text, path
-        assert FULL_TRAINING_AUTH_ENV not in text, path
-        assert FROZEN_LAUNCHER_SHA_ENV not in text, path
+        if "run_locked_training_job" in text:
+            function_paths.add(path)
+        if FULL_TRAINING_AUTH_ENV in text:
+            authorization_paths.add(path)
+        if FROZEN_LAUNCHER_SHA_ENV in text:
+            frozen_sha_paths.add(path)
+
+        if path not in allowed_paths:
+            assert "run_locked_training_job" not in text, path
+            assert FULL_TRAINING_AUTH_ENV not in text, path
+            assert FROZEN_LAUNCHER_SHA_ENV not in text, path
+
+    assert function_paths == {explicit_script}
+    assert authorization_paths == {explicit_workflow}
+    assert frozen_sha_paths == {explicit_workflow}
