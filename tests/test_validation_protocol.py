@@ -10,6 +10,7 @@ from paper2_model0.validation import (
     replication_sufficiency_diagnostic,
     seed_stability_diagnostic,
     summarize_paired_effects,
+    summarize_phase_regions,
     warmup_convergence_diagnostic,
 )
 
@@ -116,3 +117,27 @@ def test_ofat_and_phase_map_preserve_declared_factors():
     )
     cells = phase[["x_value", "y_value"]].drop_duplicates()
     assert len(cells) == 4
+
+
+
+def test_summarize_phase_regions_detects_sign_reversal_and_zero_region():
+    phase = pd.DataFrame(
+        {
+            "map_index": [0, 0, 0, 0],
+            "x_name": ["p"] * 4,
+            "x_value": [0.5, 0.5, 0.8, 0.8],
+            "y_name": ["L"] * 4,
+            "y_value": [3, 7, 3, 7],
+            "metric": ["service_level"] * 4,
+            "effect": ["S_minus_N"] * 4,
+            "direction": ["negative", "negative", "overlaps_zero", "positive"],
+        }
+    )
+    out = summarize_phase_regions(phase)
+    row = out.iloc[0]
+    assert row["cells_total"] == 4
+    assert row["cells_negative"] == 2
+    assert row["cells_positive"] == 1
+    assert row["cells_overlaps_zero"] == 1
+    assert bool(row["has_sign_reversal"])
+    assert bool(row["has_zero_boundary_region"])
