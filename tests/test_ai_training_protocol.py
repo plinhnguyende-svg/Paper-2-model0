@@ -118,6 +118,15 @@ def test_training_scenario_schedule_is_regime_independent_and_eval_seed_reserved
     assert schedule == episode_seed_schedule(41001, episode_count=20)
     assert EVALUATION_MASTER_SEED not in schedule
 
+    full_locked_domain = [
+        episode_scenario_seed(training_seed, episode_index)
+        for training_seed in TRAINING_SEEDS
+        for episode_index in range(TRAINING_EPISODES)
+    ]
+    assert len(full_locked_domain) == 5000
+    assert len(set(full_locked_domain)) == 5000
+    assert EVALUATION_MASTER_SEED not in full_locked_domain
+
 
 def test_seed_schedule_rejects_unregistered_seed_and_budget_extension():
     with pytest.raises(ValueError, match="pre-registered"):
