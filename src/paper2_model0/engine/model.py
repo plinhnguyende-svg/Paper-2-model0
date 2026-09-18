@@ -7,16 +7,16 @@ import numpy as np
 from paper2_model0.config import SimulationConfig
 from paper2_model0.domain.inventory import PerishableInventory
 from paper2_model0.domain.shipment import Shipment, ShipmentManager
-from paper2_model0.domain.observations import RetailerObservation
+from paper2_model0.domain.observations import (
+    ImporterReplenishmentObservation,
+    RetailerObservation,
+)
 from paper2_model0.domain.scenario import ExogenousScenario
 from paper2_model0.agents.retailer import Retailer
 from paper2_model0.agents.importer import Importer
 from paper2_model0.agents.exporter import Exporter
 from paper2_model0.architectures import build_architecture
-from paper2_model0.policies.retailer_replenishment import RuleBasedRetailerReplenishmentPolicy
-from paper2_model0.policies.importer_replenishment import RuleBasedImporterReplenishmentPolicy
-from paper2_model0.policies.importer_allocation import RuleBasedImporterAllocationPolicy
-from paper2_model0.policies.exporter_readiness import RuleBasedExporterReadinessPolicy
+from paper2_model0.decision_architectures import RuleBasedDecisionArchitecture
 from paper2_model0.engine.recorder import Recorder
 
 
@@ -30,7 +30,14 @@ class RunResult:
 class SupplyChainModel:
     TOL = 1e-8
 
-    def __init__(self, config: SimulationConfig, regime: str, scenario: ExogenousScenario, architecture=None):
+    def __init__(
+        self,
+        config: SimulationConfig,
+        regime: str,
+        scenario: ExogenousScenario,
+        architecture=None,
+        decision_architecture=None,
+    ):
         config.validate()
         if scenario.consumer_demand.shape[0] != config.simulation_horizon_days:
             raise ValueError("Scenario horizon does not match config.")
@@ -38,6 +45,9 @@ class SupplyChainModel:
         self.regime = regime
         self.scenario = scenario
         self.architecture = architecture or build_architecture(regime)
+        self.decision_architecture = (
+            decision_architecture or RuleBasedDecisionArchitecture(config)
+        )
         self.shipments = ShipmentManager()
         self.recorder = Recorder()
 
@@ -63,10 +73,20 @@ class SupplyChainModel:
             Exporter("E2", PerishableInventory(config.shelf_life_days), p2, p1),
         ]
 
-        self.retailer_policy = RuleBasedRetailerReplenishmentPolicy()
-        self.importer_replenishment_policy = RuleBasedImporterReplenishmentPolicy()
-        self.importer_allocation_policy = RuleBasedImporterAllocationPolicy()
-        self.exporter_readiness_policy = RuleBasedExporterReadinessPolicy()
+        # Compatibility aliases for the frozen RuleBased benchmark. The engine
+        # itself calls only observation-safe decision-architecture methods.
+        self.retailer_policy = getattr(
+            self.decision_architecture, "retailer_policy", None
+        )
+        self.importer_replenishment_policy = getattr(
+            self.decision_architecture, "importer_replenishment_policy", None
+        )
+        self.importer_allocation_policy = getattr(
+            self.decision_architecture, "importer_allocation_policy", None
+        )
+        self.exporter_readiness_policy = getattr(
+            self.decision_architecture, "exporter_readiness_policy", None
+        )
 
         self._initialize_inventory()
         self.initial_material = self._on_hand_total()
@@ -203,24 +223,24 @@ class SupplyChainModel:
                 ),
                 previous_forecast=retailer.demand_forecast,
             )
-            action = self.retailer_policy.decide(
-                obs,
-                alpha=c.demand_forecast_smoothing_weight,
-                lead_time=c.importer_to_retailer_lead_time_days,
-            )
+            action = self.decision_architecture.retailer_replenishment(obs)
             retailer.demand_forecast = action.updated_forecast
             retailer_orders.append(action.replenishment_order)
         retailer_orders_t = tuple(retailer_orders)  # type: ignore[assignment]
 
         retailer_shipments = self._dispatch_importer_to_retailers(retailer_orders_t, day)
 
-        importer_action = self.importer_replenishment_policy.decide(
-            retailer_orders=retailer_orders_t,
+        importer_replenishment_obs = ImporterReplenishmentObservation(
+            current_day=day,
+            current_retailer_orders=retailer_orders_t,
             previous_forecast=self.importer.downstream_order_forecast,
             on_hand_inventory=self.importer.inventory.total_quantity(),
-            usable_pipeline_inventory=self.shipments.usable_pipeline_quantity("B", c.shelf_life_days),
-            alpha=c.demand_forecast_smoothing_weight,
-            lead_time=c.exporter_to_importer_lead_time_days,
+            usable_pipeline_inventory=self.shipments.usable_pipeline_quantity(
+                "B", c.shelf_life_days
+            ),
+        )
+        importer_action = self.decision_architecture.importer_replenishment(
+            importer_replenishment_obs
         )
         self.importer.downstream_order_forecast = importer_action.updated_forecast
         q = importer_action.procurement_requirement
@@ -246,14 +266,16 @@ class SupplyChainModel:
                 availability=availability,
                 rival_availability_probability=exporter.known_rival_availability_probability,
             )
-            action = self.exporter_readiness_policy.decide(e_obs)
+            action = self.decision_architecture.exporter_readiness(e_obs)
             exporter.prepare_fresh_units(action.prepared_quantity)
             self.cumulative_prepared += action.prepared_quantity
             readiness_targets.append(action.readiness_target)
             prepared.append(action.prepared_quantity)
             observed_rival.append(e_obs.rival_operational_availability)
 
-        allocations = self.importer_allocation_policy.decide(q, importer_obs)
+        allocations = self.decision_architecture.importer_allocation(
+            q, importer_obs
+        )
 
         # Mechanism metrics are measured after readiness preparation but before fulfilment.
         # target_allocation_gap isolates information/decision matching; stock_allocation_gap
