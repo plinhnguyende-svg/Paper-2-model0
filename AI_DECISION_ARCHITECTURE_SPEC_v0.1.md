@@ -371,6 +371,8 @@ The primary v0.1 training configuration is fixed before the first training run:
 | hidden layers | 64, 64 |
 | activation | tanh |
 
+The discount factor is fixed at \(\gamma=1\) because the v0.1 objective is an undiscounted finite-horizon physical-efficiency objective. This prevents the terminal leftover-inventory penalty from becoming economically negligible merely because it occurs late in the episode.
+
 No hyperparameter search is permitted in v0.1. Any change requires a new specification revision committed before training.
 
 ### 7.1 Training budget
