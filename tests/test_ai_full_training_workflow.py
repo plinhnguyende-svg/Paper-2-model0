@@ -205,9 +205,19 @@ def test_entrypoint_has_no_scientific_override_arguments_and_requires_frozen_con
     assert "validate_restored_provenance" in text
 
 
+def test_entrypoint_runtime_validator_is_exact(monkeypatch):
+    module = _load_entrypoint("run_ai_full_training_job_runtime")
+    module.validate_frozen_runtime_versions()
+
+    monkeypatch.setattr(module.platform, "python_version", lambda: "3.12.13")
+    with pytest.raises(RuntimeError, match="runtime version drift"):
+        module.validate_frozen_runtime_versions()
+
+
 def test_entrypoint_validation_does_not_train(monkeypatch, tmp_path):
     module = _load_entrypoint("run_ai_full_training_job")
     monkeypatch.setattr(module, "OUTPUT_ROOT", tmp_path)
+    monkeypatch.setattr(module, "validate_frozen_runtime_versions", lambda: None)
     _set_workflow_env(monkeypatch)
 
     called = {"training": False}
@@ -322,6 +332,7 @@ def test_resume_provenance_is_bound_to_same_workflow_sha_and_runtime(
 def test_resume_validation_requires_existing_latest_pointer(monkeypatch, tmp_path):
     module = _load_entrypoint("run_ai_full_training_job_resume")
     monkeypatch.setattr(module, "OUTPUT_ROOT", tmp_path)
+    monkeypatch.setattr(module, "validate_frozen_runtime_versions", lambda: None)
     _set_workflow_env(monkeypatch, sha="5" * 40)
 
     job = module.locked_job("N", 41001)
