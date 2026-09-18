@@ -69,8 +69,8 @@ def test_physical_team_reward_uses_period_loss_waste_and_terminal_leftover():
     np.testing.assert_allclose(
         reward,
         [
-            -(3.0 + 0.0) / 30.0,
-            -(6.0 + 3.0) / 30.0 - (30.0 + 15.0) / 30.0,
+            -(0.0 + 6.0) / 30.0,
+            -(3.0) / 30.0 - (30.0 + 15.0) / 30.0,
         ],
     )
 
@@ -181,3 +181,52 @@ def test_tiny_smoke_training_is_reproducible_for_fixed_seed_and_scenario():
         a = first.update_stats[actor]
         b = second.update_stats[actor]
         assert a == b
+
+
+def test_unavailable_exporter_keeps_critic_timeline_but_masks_policy_gradient():
+    config, scenario = tiny_deterministic_smoke_case()
+    architecture = ActorLocalAIDecisionArchitecture(
+        config,
+        training_seed=41001,
+        deterministic=False,
+    )
+    frame = SupplyChainModel(
+        config,
+        "F",
+        scenario,
+        decision_architecture=architecture,
+    ).run()
+
+    from paper2_model0.ai import build_episode_rollout_buffers
+
+    buffers, _ = build_episode_rollout_buffers(
+        architecture=architecture,
+        period_df=frame,
+    )
+
+    for actor, availability_col in (
+        ("E1", "availability_1"),
+        ("E2", "availability_2"),
+    ):
+        mask = np.asarray(buffers[actor].policy_masks, dtype=bool)
+        availability = frame[availability_col].to_numpy(dtype=bool)
+        np.testing.assert_array_equal(mask, availability)
+        assert len(mask) == config.simulation_horizon_days
+        assert np.any(~mask)
+        assert np.any(mask)
+
+
+def test_day_zero_lost_sales_is_not_attributed_to_same_day_action():
+    frame = pd.DataFrame(
+        {
+            "aggregate_lost_sales": [30.0, 0.0],
+            "total_waste": [0.0, 0.0],
+            "total_on_hand_inventory": [0.0, 0.0],
+            "total_pipeline_inventory": [0.0, 0.0],
+        }
+    )
+    reward = physical_team_rewards(
+        frame,
+        aggregate_mean_demand=30.0,
+    )
+    np.testing.assert_allclose(reward, [0.0, 0.0])
