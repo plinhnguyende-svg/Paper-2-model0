@@ -549,6 +549,20 @@ def test_default_boundary_runner_rejects_scientific_contract_drift():
         )
 
 
+def test_test_fixture_contract_bypass_is_unavailable_outside_pytest_runtime(monkeypatch):
+    config, scenario = tiny_deterministic_smoke_case()
+    monkeypatch.delenv("PYTEST_CURRENT_TEST", raising=False)
+
+    with pytest.raises(RuntimeError, match="restricted to active pytest"):
+        BoundaryAwareEpisodeRunner(
+            config=config,
+            regime="F",
+            scenario=scenario,
+            training_seed=41001,
+            allow_test_fixture=True,
+        )
+
+
 def test_scientific_checkpoint_is_cryptographically_bound_to_manifest(tmp_path):
     config = SimulationConfig()
     architecture = ActorLocalAIDecisionArchitecture(
