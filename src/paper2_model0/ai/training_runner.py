@@ -103,6 +103,11 @@ class BoundaryAwareEpisodeRunner:
             self.architecture.set_before_actor_decision_hook(
                 self._before_actor_decision
             )
+
+        # Episode boundaries reset physical Model 0 state and diagnostic traces,
+        # but learned actor/critic, optimizer, and RNG states continue.
+        self.architecture.clear_episode_records()
+
         self.model = SupplyChainModel(
             config,
             regime,
