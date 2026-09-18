@@ -1,6 +1,6 @@
 # AI Decision Architecture Specification v0.1
 
-**Status:** DRAFT / PRE-TRAINING. No AI training is authorized until this specification is reviewed, CI-verified, and merged.
+**Status:** LOCKED WHEN MERGED / PRE-IMPLEMENTATION. No AI training is authorized from the branch copy; the lock becomes effective only when this exact specification is merged into `main`.
 
 **Frozen firewall base:** \`a1c0b15163d05fd4b02ccdcb1fa2843a421a07d3\`
 
@@ -568,7 +568,7 @@ The following require a new specification:
 
 ## 16. Specification lock and no-training gate
 
-This specification is not locked merely because it exists on a branch.
+This specification is a lock candidate on the branch and becomes the locked v0.1 specification only when this exact audited version is merged into `main`.
 
 It becomes locked only when:
 
