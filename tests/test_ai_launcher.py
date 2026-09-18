@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import numpy as np
+import pandas as pd
 import pytest
 
 from paper2_model0.ai.environment import ActorLocalAIDecisionArchitecture
@@ -23,6 +24,7 @@ from paper2_model0.ai.launcher import (
     locked_simulation_config,
     require_full_training_authorization,
     validate_launcher_device,
+    validate_launcher_manifest,
 )
 from paper2_model0.ai.training_protocol import (
     TRAINING_EPISODES,
@@ -79,6 +81,28 @@ def test_launcher_device_is_locked_to_cpu():
     validate_launcher_device("cpu")
     with pytest.raises(ValueError, match="CPU"):
         validate_launcher_device("cuda")
+
+
+def test_manifest_rejects_noncanonical_scenario_id():
+    job = locked_job("S", 41001)
+    config = locked_simulation_config()
+    seed = episode_scenario_seed(job.training_seed, 0)
+    scenario = generate_scenario(config, seed)
+    record = episode_manifest_record(
+        training_seed=job.training_seed,
+        episode_index=0,
+        scenario=scenario,
+    )
+    manifest = build_launcher_manifest(
+        job=job,
+        config=config,
+        source_commit_sha=SOURCE_SHA,
+        episode_records=[record],
+    )
+    manifest["episodes"][0]["scenario_id"] = "tampered-scenario"
+
+    with pytest.raises(ValueError, match="scenario_id"):
+        validate_launcher_manifest(manifest)
 
 
 def test_manifest_exists_before_episode_zero_and_resume_is_exact_next(tmp_path):
@@ -158,7 +182,7 @@ def test_manifest_exists_before_episode_zero_and_resume_is_exact_next(tmp_path):
 def test_resume_removes_uncommitted_higher_episode_orphans(tmp_path):
     job = locked_job("S", 41001)
     config = locked_simulation_config()
-    state = load_or_initialize_locked_job(
+    load_or_initialize_locked_job(
         output_root=tmp_path,
         job=job,
         source_commit_sha=SOURCE_SHA,
@@ -168,17 +192,150 @@ def test_resume_removes_uncommitted_higher_episode_orphans(tmp_path):
 
     orphan_manifest = store.manifest_path(1)
     orphan_checkpoint = store.checkpoint_path(1)
+    orphan_manifest_temp = Path(str(orphan_manifest) + ".tmp")
+    orphan_checkpoint_temp = Path(str(orphan_checkpoint) + ".tmp")
+    diagnostics_temp = Path(str(store.diagnostics_path) + ".tmp")
     orphan_manifest.parent.mkdir(parents=True, exist_ok=True)
+    store.diagnostics_path.parent.mkdir(parents=True, exist_ok=True)
+
     orphan_manifest.write_text("{}\n", encoding="utf-8")
     orphan_checkpoint.write_bytes(b"orphan")
+    orphan_manifest_temp.write_text("partial", encoding="utf-8")
+    orphan_checkpoint_temp.write_bytes(b"partial")
+    diagnostics_temp.write_text("partial", encoding="utf-8")
 
     resumed = store.load_committed_state(
         config=config,
         source_commit_sha=SOURCE_SHA,
     )
     assert resumed.next_episode_index == 0
-    assert not orphan_manifest.exists()
-    assert not orphan_checkpoint.exists()
+    for path in (
+        orphan_manifest,
+        orphan_checkpoint,
+        orphan_manifest_temp,
+        orphan_checkpoint_temp,
+        diagnostics_temp,
+    ):
+        assert not path.exists()
+
+
+def test_resume_truncates_diagnostics_written_ahead_of_latest_pointer(tmp_path):
+    job = locked_job("F", 41001)
+    config = locked_simulation_config()
+    load_or_initialize_locked_job(
+        output_root=tmp_path,
+        job=job,
+        source_commit_sha=SOURCE_SHA,
+        config=config,
+    )
+    store = LauncherRunStore(tmp_path, job)
+    store.diagnostics_path.parent.mkdir(parents=True, exist_ok=True)
+    pd.DataFrame(
+        [
+            {
+                "episode_index": 0,
+                "episode_seed": episode_scenario_seed(41001, 0),
+                "scenario_id": "orphan",
+                "total_team_reward": -1.0,
+                "non_finite_event_count": 0,
+            }
+        ]
+    ).to_csv(store.diagnostics_path, index=False)
+
+    resumed = store.load_committed_state(
+        config=config,
+        source_commit_sha=SOURCE_SHA,
+    )
+    assert resumed.next_episode_index == 0
+    assert not store.diagnostics_path.exists()
+
+
+def test_commit_rejects_diagnostic_manifest_mismatch_and_source_rewrite(tmp_path):
+    job = locked_job("N", 41001)
+    config = locked_simulation_config()
+    state = load_or_initialize_locked_job(
+        output_root=tmp_path,
+        job=job,
+        source_commit_sha=SOURCE_SHA,
+        config=config,
+    )
+    store = LauncherRunStore(tmp_path, job)
+    seed0 = episode_scenario_seed(job.training_seed, 0)
+    scenario0 = generate_scenario(config, seed0)
+    record0 = episode_manifest_record(
+        training_seed=job.training_seed,
+        episode_index=0,
+        scenario=scenario0,
+    )
+    manifest0 = build_launcher_manifest(
+        job=job,
+        config=config,
+        source_commit_sha=SOURCE_SHA,
+        episode_records=[record0],
+    )
+    bad_diagnostics = [
+        {
+            "episode_index": 0,
+            "episode_seed": seed0,
+            "scenario_id": "wrong",
+            "total_team_reward": -1.0,
+            "non_finite_event_count": 0,
+        }
+    ]
+    with pytest.raises(ValueError, match="scenario_id"):
+        store.commit_episode_boundary(
+            config=config,
+            architecture=state.architecture,
+            manifest=manifest0,
+            diagnostics=bad_diagnostics,
+        )
+
+    good_diagnostics = [
+        {
+            "episode_index": 0,
+            "episode_seed": seed0,
+            "scenario_id": scenario0.scenario_id,
+            "total_team_reward": -1.0,
+            "non_finite_event_count": 0,
+        }
+    ]
+    store.commit_episode_boundary(
+        config=config,
+        architecture=state.architecture,
+        manifest=manifest0,
+        diagnostics=good_diagnostics,
+    )
+
+    seed1 = episode_scenario_seed(job.training_seed, 1)
+    scenario1 = generate_scenario(config, seed1)
+    record1 = episode_manifest_record(
+        training_seed=job.training_seed,
+        episode_index=1,
+        scenario=scenario1,
+    )
+    rewritten = build_launcher_manifest(
+        job=job,
+        config=config,
+        source_commit_sha="2" * 40,
+        episode_records=[record0, record1],
+    )
+    next_diagnostics = [
+        *good_diagnostics,
+        {
+            "episode_index": 1,
+            "episode_seed": seed1,
+            "scenario_id": scenario1.scenario_id,
+            "total_team_reward": -1.0,
+            "non_finite_event_count": 0,
+        },
+    ]
+    with pytest.raises(ValueError, match="source commit"):
+        store.commit_episode_boundary(
+            config=config,
+            architecture=state.architecture,
+            manifest=rewritten,
+            diagnostics=next_diagnostics,
+        )
 
 
 def test_episode_diagnostics_writer_captures_losses_actions_and_active_fractions():
@@ -244,6 +401,13 @@ def test_training_stability_writer_uses_only_locked_1000_episode_budget():
     assert report["final_window_slope"] == pytest.approx(0.0)
     assert report["post_hoc_training_extension_allowed"] is False
 
+    threshold_case = _diagnostic_rows(
+        [-100.0] * 800 + [-95.0] * 200
+    )
+    threshold_report = compute_training_stability(threshold_case)
+    assert threshold_report["absolute_relative_mean_change"] == pytest.approx(0.05)
+    assert threshold_report["training_stable"] is True
+
     trending_rewards = [-100.0] * 800 + [
         -100.0 + 0.05 * index for index in range(200)
     ]
@@ -254,6 +418,14 @@ def test_training_stability_writer_uses_only_locked_1000_episode_budget():
         <= 0.0
         <= trending["final_window_slope_ci95_high"]
     )
+
+    undefined_relative_change = _diagnostic_rows(
+        [0.0] * 800 + [1.0] * 200
+    )
+    undefined_report = compute_training_stability(undefined_relative_change)
+    assert undefined_report["absolute_relative_mean_change"] is None
+    assert undefined_report["relative_mean_change_defined"] is False
+    assert undefined_report["training_stable"] is False
 
     with pytest.raises(ValueError, match="diagnostic row count"):
         compute_training_stability(constant[:-1])
@@ -274,12 +446,20 @@ def test_full_training_gate_requires_explicit_frozen_launcher_sha(monkeypatch):
     require_full_training_authorization(SOURCE_SHA)
 
 
-def test_launcher_workflow_is_dry_run_only():
+def test_repository_has_no_hidden_full_training_entrypoint_before_freeze():
     workflow = Path(".github/workflows/ai_launcher_gate.yml").read_text(
         encoding="utf-8"
     )
     assert "run_ai_launcher_dry_run.py" in workflow
-    assert "run_locked_training_job" not in workflow
     assert "matrix:" not in workflow
-    assert FULL_TRAINING_AUTH_ENV not in workflow
-    assert FROZEN_LAUNCHER_SHA_ENV not in workflow
+
+    candidate_paths = [
+        *Path(".github/workflows").glob("*.yml"),
+        *Path(".github/workflows").glob("*.yaml"),
+        *Path("scripts").glob("*.py"),
+    ]
+    for path in candidate_paths:
+        text = path.read_text(encoding="utf-8")
+        assert "run_locked_training_job" not in text, path
+        assert FULL_TRAINING_AUTH_ENV not in text, path
+        assert FROZEN_LAUNCHER_SHA_ENV not in text, path
