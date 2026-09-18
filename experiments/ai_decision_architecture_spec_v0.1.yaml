@@ -1,5 +1,5 @@
 spec_version: ai_decision_architecture_v0.1
-status: draft_pre_training
+status: locked_pre_implementation
 frozen_firewall_base_commit: a1c0b15163d05fd4b02ccdcb1fa2843a421a07d3
 
 factorial_design:
