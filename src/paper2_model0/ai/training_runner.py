@@ -71,6 +71,7 @@ class BoundaryAwareEpisodeRunner:
         training_seed: int,
         device: str | torch.device = "cpu",
         architecture: ActorLocalAIDecisionArchitecture | None = None,
+        allow_test_fixture: bool = False,
     ):
         config.validate()
         if scenario.consumer_demand.shape[0] != config.simulation_horizon_days:
@@ -83,6 +84,20 @@ class BoundaryAwareEpisodeRunner:
         self.device = torch.device(device)
         self.hyperparameters = PPOHyperparameters()
         self.hyperparameters.validate_locked_v01()
+
+        if not allow_test_fixture:
+            # Local import avoids a module-import cycle: training_protocol uses
+            # ACTOR_NAMES from this module. The production/default path is
+            # therefore contract-locked, while tiny deterministic unit fixtures
+            # must opt in explicitly.
+            from .training_protocol import validate_scientific_training_contract
+
+            validate_scientific_training_contract(
+                regime=self.regime,
+                training_seed=self.training_seed,
+                config=self.config,
+                hyperparameters=self.hyperparameters,
+            )
 
         if architecture is None:
             self.architecture = ActorLocalAIDecisionArchitecture(
