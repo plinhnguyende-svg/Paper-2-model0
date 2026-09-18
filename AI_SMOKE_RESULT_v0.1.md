@@ -92,3 +92,46 @@ It does not establish convergence, policy quality, external validity, or operati
 \text{END-TO-END SMOKE PASSED; FULL PRE-REGISTERED TRAINING REMAINS BLOCKED UNTIL PR \#7 REVIEW/FREEZE.}
 }
 \]
+
+
+## Final pre-freeze audit: reward timing, rollout semantics, unavailable exporters
+
+The first successful smoke run exposed two integration issues that were not
+visible in the isolated PPO-core tests.
+
+### Reward timing
+
+Consumer demand is served before the day's AI decisions in Model 0. The
+original smoke wiring attached \`LostSales_t\` to the action chosen later on
+day \(t\), which is causally misaligned.
+
+The corrected transition reward attaches same-day post-action waste and
+next-day lost sales to decision \(t\). Day-0 lost sales are treated as an
+initial-condition constant and are not credited to any action.
+
+### Rollout semantics
+
+All six actors retain one rollout record per Model 0 day. This preserves the
+daily transition clock for GAE and avoids silently changing the discount/time
+scale when an exporter is unavailable.
+
+### Unavailable-exporter learning
+
+An unavailable exporter has no decision right: readiness and preparation are
+forced to zero.
+
+The corrected implementation therefore:
+
+- does not sample its Gaussian policy on unavailable days;
+- stores a zero latent placeholder only for aligned buffer shape;
+- evaluates the local critic so the daily return timeline is preserved;
+- sets \`policy_active=false\`;
+- masks that sample out of PPO policy loss, entropy, approximate KL, and clip
+  fraction;
+- still permits critic learning from the team-return transition.
+
+A fully masked PPO batch is tested to leave actor parameters and \`log_std\`
+unchanged while allowing critic parameters to update.
+
+These are implementation-correctness fixes discovered before full training;
+they do not alter the N/S/F institution or introduce a new research treatment.
