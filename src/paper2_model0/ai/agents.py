@@ -15,6 +15,7 @@ class ActorLocalIPPOAgent:
     network: GaussianActorCritic
     updater: PPOUpdater
     device: torch.device
+    action_generator: torch.Generator
 
     def act(
         self,
@@ -34,10 +35,21 @@ class ActorLocalIPPOAgent:
             device=self.device,
         )
         with torch.no_grad():
-            action, log_prob, value = self.network.act(
-                tensor,
-                deterministic=deterministic,
-            )
+            dist = self.network.distribution(tensor)
+            if deterministic:
+                action = dist.mean
+            else:
+                # Use an actor-local CPU generator so stochastic action streams
+                # are reproducible and independent of global torch RNG state.
+                noise = torch.randn(
+                    dist.mean.shape,
+                    generator=self.action_generator,
+                    dtype=dist.mean.dtype,
+                    device="cpu",
+                ).to(self.device)
+                action = dist.mean + dist.stddev * noise
+            log_prob = dist.log_prob(action).sum(dim=-1)
+            value = self.network.value(tensor)
         return (
             action.squeeze(0).cpu().numpy().copy(),
             float(log_prob.squeeze(0).cpu()),
@@ -79,11 +91,14 @@ def build_actor_local_ippo_agents(
             hyperparameters=hp,
             shuffle_seed=actor_seed + 50_000,
         )
+        action_generator = torch.Generator(device="cpu")
+        action_generator.manual_seed(actor_seed + 25_000)
         agents[spec.name] = ActorLocalIPPOAgent(
             name=spec.name,
             network=network,
             updater=updater,
             device=device,
+            action_generator=action_generator,
         )
 
     _validate_no_parameter_sharing(agents)
