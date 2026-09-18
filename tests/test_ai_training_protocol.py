@@ -276,9 +276,7 @@ def test_uninterrupted_and_save_resume_match_next_actions_and_subsequent_updates
     assert uninterrupted_second.update_events == resumed_second.update_events
 
     for actor in ACTOR_NAMES:
-        uninterrupted_records = (
-            uninterrupted_architecture.records_by_actor()[actor][-8:]
-        )
+        uninterrupted_records = uninterrupted_architecture.records_by_actor()[actor]
         resumed_records = resumed_architecture.records_by_actor()[actor]
         assert len(uninterrupted_records) == len(resumed_records) == 8
         for left, right in zip(uninterrupted_records, resumed_records):
@@ -370,3 +368,69 @@ def test_non_finite_actor_state_fails_before_checkpoint_and_action(tmp_path):
             completed_episode_count=0,
             config=config,
         )
+
+
+def test_episode_boundary_resets_only_diagnostic_traces_not_learning_state():
+    config, first_scenario = tiny_deterministic_smoke_case()
+    second_scenario = _second_smoke_scenario(config)
+
+    architecture = ActorLocalAIDecisionArchitecture(
+        config,
+        training_seed=41001,
+        deterministic=False,
+    )
+    BoundaryAwareEpisodeRunner(
+        config=config,
+        regime="N",
+        scenario=first_scenario,
+        training_seed=41001,
+        architecture=architecture,
+    ).run_episode()
+
+    first_network_state = {
+        actor: {
+            key: value.detach().clone()
+            for key, value in architecture.agents[actor].network.state_dict().items()
+        }
+        for actor in ACTOR_NAMES
+    }
+    first_action_rng = {
+        actor: architecture.agents[actor].action_generator.get_state().clone()
+        for actor in ACTOR_NAMES
+    }
+    assert all(
+        len(records) == config.simulation_horizon_days
+        for records in architecture.records_by_actor().values()
+    )
+
+    second_runner = BoundaryAwareEpisodeRunner(
+        config=config,
+        regime="N",
+        scenario=second_scenario,
+        training_seed=41001,
+        architecture=architecture,
+    )
+
+    assert all(
+        len(records) == 0
+        for records in architecture.records_by_actor().values()
+    )
+    for actor in ACTOR_NAMES:
+        # Constructing the next episode must not reinitialize the learned state.
+        for key, value in architecture.agents[actor].network.state_dict().items():
+            torch.testing.assert_close(
+                value,
+                first_network_state[actor][key],
+                rtol=0.0,
+                atol=0.0,
+            )
+        assert torch.equal(
+            architecture.agents[actor].action_generator.get_state(),
+            first_action_rng[actor],
+        )
+
+    second_runner.run_episode()
+    assert all(
+        len(records) == config.simulation_horizon_days
+        for records in architecture.records_by_actor().values()
+    )
