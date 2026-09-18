@@ -70,6 +70,12 @@ def test_full_training_workflow_is_manual_only_and_has_only_operational_inputs()
     ):
         assert forbidden_input not in text
 
+    # workflow_dispatch strings are first bound to step environment variables;
+    # untrusted input expressions are never interpolated directly into shell.
+    for step in workflow["jobs"]["train"]["steps"]:
+        if "run" in step:
+            assert "${{ inputs." not in step["run"]
+
 
 def test_workflow_matrix_is_exact_frozen_15_job_registry():
     workflow = _workflow()
