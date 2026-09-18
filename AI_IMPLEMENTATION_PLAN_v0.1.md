@@ -29,11 +29,11 @@ This branch implements the frozen AI Decision Architecture Specification v0.1. I
 ## Current gate
 
 \[
-\boxed{\text{ACTOR-LOCAL PPO CORE IMPLEMENTED; FULL MODEL TRAINING NOT YET AUTHORIZED}}
+\boxed{\text{TINY END-TO-END SMOKE HARNESS IMPLEMENTED; FULL PRE-REGISTERED TRAINING NOT YET AUTHORIZED}}
 \]
 
-The deterministic pre-PPO components have been frozen. Actor-local policy/value networks, actor-local rollout storage, GAE, and PPO update code are now implemented on a separate branch.
+The deterministic pre-PPO components and actor-local PPO core have been frozen. A separate tiny deterministic harness now connects legal observations, actor-local policies, bounded actions, Model 0 transitions, physical team rewards, local rollouts, GAE, and PPO updates.
 
-The next gate is CI and implementation review. Only after that gate should the code be connected to a tiny deterministic environment smoke-training harness. The pre-registered full 1000-episode training budget remains prohibited.
+The next gate is CI plus review of the smoke artifact. The pre-registered five training seeds × 1000 episodes remain prohibited until this smoke milestone is frozen.
 
-No learned Model 0 checkpoints or scientific performance claims are permitted at this gate.
+No scientific AI performance claim is permitted at this gate.
