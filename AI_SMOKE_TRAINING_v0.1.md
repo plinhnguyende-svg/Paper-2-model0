@@ -72,7 +72,7 @@ r_t
 =
 -
 \frac{
-Waste_t+LostSales_{t+1}
+OnHandWaste_t+TransitWaste_{t+1}+LostSales_{t+1}
 }{
 \bar\lambda
 },
@@ -85,7 +85,7 @@ For the final decision transition,
 r_{T-1}
 =
 -
-\frac{Waste_{T-1}}{\bar\lambda}
+\frac{OnHandWaste_{T-1}}{\bar\lambda}
 -
 \frac{
 OnHand_T+Pipeline_T
@@ -94,10 +94,10 @@ OnHand_T+Pipeline_T
 }.
 \]
 
-Day-0 lost sales are an initial-condition outcome caused before any AI action.
-Dropping that term changes the episode objective only by a policy-independent
-constant for a fixed scenario and initial state; it prevents assigning a
-pre-action loss to the wrong action.
+Day-0 lost sales and day-0 transit waste are initial-condition outcomes caused
+before any AI action. Dropping those terms changes the episode objective only
+by policy-independent constants for a fixed scenario and initial state; it
+prevents assigning pre-action outcomes to the wrong action.
 
 The same transition reward is attached to every actor's day-aligned critic
 timeline.
