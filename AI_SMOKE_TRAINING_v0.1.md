@@ -59,24 +59,33 @@ R1,\ R2,\ R3,\ BQ,\ E1,\ E2.
 
 Importer allocation remains the frozen deterministic N/S/F institutional rule and is not learned.
 
-## Reward
+## Reward timing
 
-For day \(t\),
+Model 0 serves consumer demand before the day's AI decisions. Therefore
+`aggregate_lost_sales[t]` is pre-action with respect to the decisions chosen
+on day \(t\).
+
+The smoke audit therefore indexes reward by **decision transition**:
 
 \[
 r_t
 =
 -
 \frac{
-LostSales_t+Waste_t
+Waste_t+LostSales_{t+1}
 }{
 \bar\lambda
-}.
+},
+\qquad t<T-1.
 \]
 
-On the final day, the terminal leftover penalty is added:
+For the final decision transition,
 
 \[
+r_{T-1}
+=
+-
+\frac{Waste_{T-1}}{\bar\lambda}
 -
 \frac{
 OnHand_T+Pipeline_T
@@ -85,20 +94,32 @@ OnHand_T+Pipeline_T
 }.
 \]
 
-The same team reward is attached to each actor-local transition from that environment day.
+Day-0 lost sales are an initial-condition outcome caused before any AI action.
+Dropping that term changes the episode objective only by a policy-independent
+constant for a fixed scenario and initial state; it prevents assigning a
+pre-action loss to the wrong action.
+
+The same transition reward is attached to every actor's day-aligned critic
+timeline.
 
 ## Rollout semantics
 
 Every actor has its own rollout buffer containing only:
 
 - legal encoded local observation;
-- latent action;
-- log probability;
+- latent action placeholder;
+- log probability placeholder;
 - local critic value;
 - team reward;
-- done flag.
+- done flag;
+- policy-active mask.
 
-The smoke harness requires exactly one decision record per actor per environment day and verifies day alignment before constructing PPO batches.
+The smoke harness keeps exactly one record per actor per environment day so
+GAE remains on the daily Model 0 clock. Retailer and importer policy masks are
+always active. For an unavailable exporter, the environment forces the action
+to zero, does not sample its policy, and sets the policy-active mask to false.
+Its critic still receives the day-aligned state/reward transition, but the
+actor, entropy, KL, and clipping terms receive no gradient contribution.
 
 ## Stochastic-action reproducibility hardening
 
