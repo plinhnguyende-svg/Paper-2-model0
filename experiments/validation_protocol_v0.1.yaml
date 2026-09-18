@@ -1,0 +1,62 @@
+model_version: model0_validation_protocol_v0.1
+base_config:
+  number_of_retailers: 3
+  simulation_horizon_days: 1000
+  warmup_days: 200
+  shelf_life_days: 7
+  exporter_to_importer_lead_time_days: 2
+  importer_to_retailer_lead_time_days: 1
+  retailer_mean_demand: [10.0, 10.0, 10.0]
+  demand_forecast_smoothing_weight: 0.30
+  exporter_availability_probability: [0.80, 0.80]
+
+warmup:
+  master_seed: 20260917
+  number_of_replications: 30
+  warmup_candidates_days: [0, 50, 100, 200, 300, 400]
+  measurement_window_days: 600
+
+replication_sufficiency:
+  master_seed: 20260917
+  max_replications: 200
+  checkpoints: [10, 20, 30, 50, 100, 200]
+
+seed_stability:
+  master_seeds: [20260917, 20260918, 20260919, 20260920, 20260921]
+  number_of_replications: 50
+
+ofat:
+  master_seed: 20260917
+  number_of_replications: 50
+  factors:
+    exporter_availability_probability_symmetric: [0.50, 0.60, 0.70, 0.80, 0.90, 1.00]
+    shelf_life_days: [3, 5, 7, 10, 14]
+    exporter_to_importer_lead_time_days: [1, 2, 3, 4]
+    importer_to_retailer_lead_time_days: [1, 2, 3]
+    demand_forecast_smoothing_weight: [0.10, 0.30, 0.50, 0.70, 1.00]
+
+phase_maps:
+  master_seed: 20260917
+  number_of_replications: 30
+  maps:
+    - x_name: exporter_availability_probability_symmetric
+      x_values: [0.50, 0.60, 0.70, 0.80, 0.90, 1.00]
+      y_name: shelf_life_days
+      y_values: [3, 5, 7, 10, 14]
+    - x_name: exporter_availability_probability_symmetric
+      x_values: [0.50, 0.60, 0.70, 0.80, 0.90, 1.00]
+      y_name: exporter_to_importer_lead_time_days
+      y_values: [1, 2, 3, 4]
+
+primary_metrics:
+  - service_level
+  - waste_share_of_terminal_outflow
+  - retail_order_bullwhip
+  - importer_procurement_bullwhip
+  - mean_abs_target_allocation_gap_1
+  - mean_abs_target_allocation_gap_2
+  - mean_abs_stock_allocation_gap_1
+  - mean_abs_stock_allocation_gap_2
+  - total_lost_sales
+  - total_waste
+  - mean_total_inventory
