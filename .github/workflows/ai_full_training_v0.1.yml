@@ -58,11 +58,14 @@ jobs:
 
     steps:
       - name: Require explicit frozen-run confirmation
+        env:
+          CONFIRMATION_INPUT: ${{ inputs.confirmation }}
+          RESUME_RUN_ID_INPUT: ${{ inputs.resume_run_id }}
         run: |
-          test "${{ inputs.confirmation }}" = "RUN_FROZEN_AI_V0_1"
+          test "${CONFIRMATION_INPUT}" = "RUN_FROZEN_AI_V0_1"
           test "${GITHUB_REF}" = "refs/heads/ai-full-training-v0.1-frozen"
-          if [ -n "${{ inputs.resume_run_id }}" ] && ! [[ "${{ inputs.resume_run_id }}" =~ ^[0-9]+$ ]]; then
-            echo "resume_run_id must be a numeric prior workflow run id" >&2
+          if [ -n "${RESUME_RUN_ID_INPUT}" ] && ! [[ "${RESUME_RUN_ID_INPUT}" =~ ^[1-9][0-9]*$ ]]; then
+            echo "resume_run_id must be a positive numeric prior workflow run id" >&2
             exit 1
           fi
 
@@ -97,21 +100,32 @@ jobs:
           run-id: ${{ inputs.resume_run_id }}
 
       - name: Validate frozen job and restored state
+        env:
+          RESUME_RUN_ID_INPUT: ${{ inputs.resume_run_id }}
         run: |
-          EXTRA_ARGS=""
-          if [ -n "${{ inputs.resume_run_id }}" ]; then
-            EXTRA_ARGS="--require-existing-state --resume-run-id ${{ inputs.resume_run_id }}"
+          RESUME_ARGS=()
+          if [ -n "${RESUME_RUN_ID_INPUT}" ]; then
+            RESUME_ARGS+=(--require-existing-state --resume-run-id "${RESUME_RUN_ID_INPUT}")
           fi
-          python scripts/run_ai_full_training_job.py             --regime "${{ matrix.regime }}"             --training-seed "${{ matrix.training_seed }}"             --validate-only             ${EXTRA_ARGS}
+          python scripts/run_ai_full_training_job.py \
+            --regime "${{ matrix.regime }}" \
+            --training-seed "${{ matrix.training_seed }}" \
+            --validate-only \
+            "${RESUME_ARGS[@]}"
 
       - name: Run frozen scientific training job
         timeout-minutes: 300
+        env:
+          RESUME_RUN_ID_INPUT: ${{ inputs.resume_run_id }}
         run: |
-          EXTRA_ARGS=""
-          if [ -n "${{ inputs.resume_run_id }}" ]; then
-            EXTRA_ARGS="--require-existing-state --resume-run-id ${{ inputs.resume_run_id }}"
+          RESUME_ARGS=()
+          if [ -n "${RESUME_RUN_ID_INPUT}" ]; then
+            RESUME_ARGS+=(--require-existing-state --resume-run-id "${RESUME_RUN_ID_INPUT}")
           fi
-          python scripts/run_ai_full_training_job.py             --regime "${{ matrix.regime }}"             --training-seed "${{ matrix.training_seed }}"             ${EXTRA_ARGS}
+          python scripts/run_ai_full_training_job.py \
+            --regime "${{ matrix.regime }}" \
+            --training-seed "${{ matrix.training_seed }}" \
+            "${RESUME_ARGS[@]}"
 
       - name: Persist committed recovery state
         if: ${{ always() }}
