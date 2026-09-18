@@ -47,7 +47,7 @@ jobs:
           assert numpy.__version__ == "2.5.3"
           assert pandas.__version__ == "3.0.6"
           assert yaml.__version__ == "6.0.3"
-          assert torch.__version__ == "2.14.0"
+          assert torch.__version__.split("+", 1)[0] == "2.14.0"
           print("locked full-training runtime resolved successfully")
           PY
 
