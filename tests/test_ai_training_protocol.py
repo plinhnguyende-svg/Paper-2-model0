@@ -183,7 +183,7 @@ def test_scientific_manifest_rejects_horizon_drift():
         simulation_horizon_days=999,
         warmup_days=200,
     )
-    with pytest.raises(ValueError, match="exactly 1000 days"):
+    with pytest.raises(ValueError, match="1000 Model-0 days"):
         build_run_manifest(
             regime="N",
             training_seed=41001,
