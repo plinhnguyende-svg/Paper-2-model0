@@ -1,90 +1,99 @@
 # AI Decision Architecture Specification v0.1
 
-**Status:** DRAFT / PRE-TRAINING. No AI training is authorized until this specification is reviewed and merged.
+**Status:** DRAFT / PRE-TRAINING. No AI training is authorized until this specification is reviewed, CI-verified, and merged.
 
-**Frozen software base:** `a1c0b15163d05fd4b02ccdcb1fa2843a421a07d3`
+**Frozen firewall base:** \`a1c0b15163d05fd4b02ccdcb1fa2843a421a07d3\`
 
-That commit contains the merged actor-isolated observation firewall from PR #3.
+This base contains the actor-isolated observation firewall frozen after PR #3.
 
 ## 1. Scientific purpose
 
 The AI extension studies the factorial design
 
-[
+\[
 \{N,S,F\}\times\{RuleBased,AI\}.
-]
-
-The identification target is not "Is AI always better?" and not "Is more transparency always better?"
+\]
 
 The primary question is:
 
 > Does the operational effect of verified information change when the same supply-chain institution is operated by learning-based autonomous decision policies instead of the validated RuleBased policies?
 
-The information architecture remains N/S/F. The AI treatment changes only the decision architecture.
+The information architecture remains \(N/S/F\). The AI treatment changes decision logic only. It does not change the physical network, FEFO mechanics, demand process, availability process, timing, or legal information rights.
 
-## 2. Actor and decision boundaries
+The primary estimands are information-by-decision-architecture interactions, not a universal ranking of regimes and not a claim that AI is always better.
 
-The primary AI treatment replaces the RuleBased decision logic at all currently exposed decision boundaries while preserving the same timing and information rights.
+## 2. What is institutional and what is learnable
 
-There are six actor-isolated policy instances:
+A key identification rule is that the **N/S/F importer allocation mechanism remains fixed**. It is part of the validated information-treatment institution and is not turned into an AI action.
 
-- Retailer 1 policy;
-- Retailer 2 policy;
-- Retailer 3 policy;
-- one Importer policy;
-- Exporter 1 policy;
-- Exporter 2 policy.
+The deterministic importer allocation rule therefore remains:
 
-The Importer policy makes two sequential decisions in each period:
+- \(N\): split \(Q_t\) equally across the two exporters; no same-period reallocation;
+- \(S/F\): allocate \(Q_t\) equally across verified active exporters; allocate zero if none is active.
 
-1. pre-revelation replenishment / procurement requirement;
-2. post-revelation allocation.
+This prevents the AI treatment from silently redefining the N/S/F mechanism or exploiting arbitrary exporter labels.
 
-The two decisions belong to the same importer actor. Retailer and exporter policy state is not shared across actors.
+The learnable decision nodes are:
 
-No policy receives a regime label, the raw `SupplyChainModel`, the `ExogenousScenario`, or any hidden state outside its typed observation.
+1. Retailer 1 replenishment target;
+2. Retailer 2 replenishment target;
+3. Retailer 3 replenishment target;
+4. importer pre-revelation procurement target;
+5. Exporter 1 readiness target;
+6. Exporter 2 readiness target.
 
-## 3. AI algorithm definition
+The primary treatment is therefore a **system-level decision-architecture replacement at all discretionary replenishment/readiness nodes**, while the validated information/allocation institution remains fixed.
 
-The v0.1 AI benchmark is **decentralized Independent Proximal Policy Optimization (IPPO)** with actor-local critics.
+Node-level AI ablations are not part of the confirmatory v0.1 experiment. They require a separate pre-specified extension.
 
-The design deliberately excludes a centralized critic. Both actor and critic for each policy may use only that actor's legal observation vector.
+## 3. AI algorithm definition and rationale
 
-The v0.1 policies are feed-forward rather than recurrent. This keeps the treatment interpretable and avoids introducing hidden-state channels in the first AI benchmark. Recurrent policies are a later extension and require a separate specification revision.
+The v0.1 AI benchmark is decentralized **Independent Proximal Policy Optimization (IPPO)** with actor-local critics.
 
-Each policy uses its own parameters. No parameter sharing is allowed between retailers, between exporters, or across roles in v0.1.
+This choice is pre-specified for four reasons:
 
-### Network architecture
+1. the model already has decentralized actor-specific observation sets;
+2. PPO naturally handles the continuous latent controls used for target decisions;
+3. local critics avoid a centralized-critic information channel that could undermine N/S/F treatment isolation;
+4. IPPO provides a common learning algorithm across all information regimes without changing network structure by regime.
 
-For every actor-specific policy and value network:
+This is a benchmark choice, not a claim that IPPO is globally optimal for the environment.
 
-[
+The v0.1 policies are feed-forward rather than recurrent. Recurrent policies are a later extension because hidden memory would require an additional information-leakage audit.
+
+Each actor has a distinct mutable policy instance. Parameter sharing across actors is not allowed in v0.1.
+
+### 3.1 Network architecture
+
+For every learnable actor policy and value network:
+
+\[
 \text{input}\rightarrow64\rightarrow64\rightarrow\text{output},
-]
+\]
 
-with (	anh) activations in the two hidden layers.
+with \(\tanh\) activations.
 
-Continuous latent actions use Gaussian policy heads with learned log standard deviation during training. Evaluation uses the deterministic policy mean.
+Continuous latent actions use Gaussian policy heads with learned log standard deviation during training. Final evaluation uses the deterministic policy mean.
 
 ## 4. Observation encoding
 
-Define retailer mean demand by (lambda_r) and aggregate mean demand by
+Let retailer mean demand be \(\lambda_r>0\), and define aggregate mean demand
 
-[
+\[
 \bar\lambda=\lambda_1+\lambda_2+\lambda_3.
-]
+\]
 
-Quantities are normalized by these fixed model scales. No running normalization fitted on evaluation data is permitted.
+The v0.1 AI specification requires positive retailer mean demand because these constants are used as fixed normalization scales.
 
-Known/value masks keep the learnable input dimension identical across N, S, and F. The network architecture therefore does not change with the information regime; only legally available values change.
+No running normalization fitted on final evaluation data is permitted.
 
-The field `current_day` is intentionally excluded from the learnable vector so that the policy cannot exploit the finite evaluation horizon.
+The field \`current_day\` is excluded from learnable vectors so a policy cannot exploit the arbitrary finite evaluation horizon.
 
-### 4.1 Retailer (r)
+Known/value masks keep legal input dimensions identical across \(N,S,F\). The network structure therefore does not change with information regime; only legally available values change.
 
-The learnable vector is
+### 4.1 Retailer \(r\)
 
-[
+\[
 o^{R_r}_t=
 \left[
 \frac{d_{r,t}}{\lambda_r},
@@ -92,17 +101,17 @@ o^{R_r}_t=
 \frac{P_{r,t}}{\lambda_r},
 \frac{f_{r,t-1}}{\lambda_r}
 \right].
-]
+\]
 
 These are current consumer demand, on-hand inventory, usable pipeline inventory, and previous forecast.
 
-The vector is identical in N, S, and F.
+The vector is identical in \(N,S,F\).
 
 ### 4.2 Importer replenishment
 
-Before current exporter availability is revealed, the importer receives
+Before current exporter availability is revealed:
 
-[
+\[
 o^{B,Q}_t=
 \left[
 \frac{o_{1,t}}{\lambda_1},
@@ -112,51 +121,13 @@ o^{B,Q}_t=
 \frac{I^B_t}{\bar\lambda},
 \frac{P^B_t}{\bar\lambda}
 \right].
-]
+\]
 
 No current exporter-availability variable is present in any regime.
 
-### 4.3 Importer allocation
+### 4.3 Exporter \(i\)
 
-The post-revelation importer vector is
-
-[
-o^{B,X}_t=
-\left[
-\frac{Q_t}{\bar\lambda},
-\frac{o_{1,t}}{\lambda_1},
-\frac{o_{2,t}}{\lambda_2},
-\frac{o_{3,t}}{\lambda_3},
-\frac{I^B_t}{\bar\lambda},
-\frac{P^B_t}{\bar\lambda},
-k_{1,t},v_{1,t},k_{2,t},v_{2,t}
-\right].
-]
-
-For exporter (i):
-
-- (k_{i,t}=1) when current availability is legally known to the importer and (0) otherwise;
-- (v_{i,t}\in\{0,1\}) is the availability value when known and is encoded as (0) when (k_{i,t}=0).
-
-Therefore:
-
-[
-N:\quad k_{1,t}=k_{2,t}=0,
-]
-
-while
-
-[
-S,F:\quad k_{1,t}=k_{2,t}=1.
-]
-
-S and F expose the same current exporter state to the importer.
-
-### 4.4 Exporter (i)
-
-The learnable exporter vector is
-
-[
+\[
 o^{E_i}_t=
 \left[
 \frac{Q_t}{\bar\lambda},
@@ -167,154 +138,179 @@ b_t,
 k^j_t,
 v^j_t
 \right].
-]
+\]
 
-Here (a_{i,t}) is own current availability, (p_j) is the known rival availability probability, and (b_t) indicates whether the buyer uses verified state-contingent allocation.
+Here:
 
-For rival current availability:
+- \(a_{i,t}\) is own current availability;
+- \(p_j\) is known rival availability probability;
+- \(b_t\) indicates whether the buyer uses verified state-contingent allocation;
+- \(k^j_t\) is the legal-known mask for rival current availability;
+- \(v^j_t\) is the rival availability value when known and is encoded as zero when unknown.
 
-[
+Thus:
+
+\[
 N,S:\quad k^j_t=0,
-]
+\]
 
-and
+while
 
-[
+\[
 F:\quad k^j_t=1.
-]
+\]
 
-When rival availability is hidden, (v^j_t=0) is only a placeholder and the known-mask bit remains zero.
+The zero placeholder is never interpreted without its known-mask bit.
 
-## 5. Action spaces and feasibility mapping
+## 5. Forecast-state transition is held fixed
 
-The policy outputs latent continuous actions. The environment applies deterministic feasibility transforms. The AI may optimize decisions but may not violate the institution or physical feasibility.
+The validated RuleBased model stores retailer and importer forecasts as state variables. To avoid confounding learning with a different forecasting-state law, v0.1 keeps those forecast updates deterministic and identical to Model 0.
 
-### 5.1 Retailer replenishment
+For retailer \(r\):
 
-Retailer (r) outputs one latent scalar (z^{R_r}_t\in\mathbb R).
+\[
+f_{r,t}
+=
+\alpha d_{r,t}
++
+(1-\alpha)f_{r,t-1}.
+\]
 
-The implied target inventory position is
+For the importer:
 
-[
+\[
+f^B_t
+=
+\alpha\sum_{r=1}^3 o_{r,t}
++
+(1-\alpha)f^B_{t-1}.
+\]
+
+The AI does **not** choose the updated forecast. It observes the legal forecast state and chooses the operational target described below.
+
+This rule ensures that a RuleBased-vs-AI comparison changes the control policy while preserving the existing forecast-state dynamics.
+
+## 6. Action spaces and feasibility transforms
+
+Unbounded softplus inventory targets are not permitted in v0.1 because they can create an artificial high-inventory solution under a non-monetary reward.
+
+All target actions are therefore bounded by pre-specified operational scales.
+
+### 6.1 Retailer replenishment
+
+Retailer \(r\) outputs latent scalar \(z^{R_r}_t\in\mathbb R\).
+
+Define
+
+\[
+S^{R_r,\max}=L\lambda_r,
+\]
+
+where \(L\) is shelf life in days.
+
+The target inventory position is
+
+\[
 S^{R_r}_t
 =
-\lambda_r\operatorname{softplus}(z^{R_r}_t).
-]
+S^{R_r,\max}\sigma(z^{R_r}_t),
+\]
 
-The actual replenishment order is
+where \(\sigma(\cdot)\) is the logistic sigmoid.
 
-[
+The replenishment order is
+
+\[
 O_{r,t}
 =
 \max\left\{
 0,
 S^{R_r}_t-I_{r,t}-P_{r,t}
 \right\}.
-]
+\]
 
-This preserves the order-up-to interpretation while allowing the target to be learned.
+The cap corresponds to at most one shelf-life of mean demand in target inventory position. It is an explicit v0.1 action-domain assumption, not a physical capacity claim.
 
-### 5.2 Importer replenishment
+### 6.2 Importer replenishment
 
-The importer outputs one latent scalar (z^{B,Q}_t\in\mathbb R).
+The importer outputs latent scalar \(z^{B,Q}_t\in\mathbb R\).
 
-The learned importer target inventory position is
+Define
 
-[
+\[
+S^{B,\max}=L\bar\lambda.
+\]
+
+The importer target is
+
+\[
 S^B_t
 =
-\bar\lambda\operatorname{softplus}(z^{B,Q}_t),
-]
+S^{B,\max}\sigma(z^{B,Q}_t),
+\]
 
-and the procurement requirement is
+and
 
-[
+\[
 Q_t
 =
 \max\left\{
 0,
 S^B_t-I^B_t-P^B_t
 \right\}.
-]
+\]
 
 This decision is completed before current exporter availability is revealed.
 
-### 5.3 Importer allocation
+### 6.3 Importer allocation remains deterministic
 
-The importer outputs two allocation logits
+No AI allocation logits exist in v0.1.
 
-[
-(z^X_{1,t},z^X_{2,t}).
-]
+After \(Q_t\) is formed, the validated N/S/F allocation rule is applied exactly as in the frozen RuleBased model.
 
-Eligibility is regime-dependent but not AI-controlled.
+Therefore the AI treatment cannot create an artificial allocation advantage by learning exporter labels or by changing the treatment-defining allocation mechanism.
 
-In N, both exporters are eligible because current availability is unknown.
+### 6.4 Exporter readiness
 
-In S and F, verified inactive exporters are masked out. If no exporter is verified active, allocation is ((0,0)).
+If exporter \(i\) is unavailable:
 
-If at least one exporter is eligible, softmax is applied only over eligible exporters:
-
-[
-s_{i,t}
-=
-\frac{\exp(z^X_{i,t})}
-{\sum_{j\in\mathcal E_t}\exp(z^X_{j,t})},
-]
-
-and
-
-[
-X_{i,t}=Q_t s_{i,t}.
-]
-
-Thus
-
-[
-X_{i,t}\ge0,
-\qquad
-\sum_i X_{i,t}=Q_t
-]
-
-whenever at least one exporter is eligible.
-
-### 5.4 Exporter readiness
-
-If exporter (i) is unavailable,
-
-[
+\[
 Y_{i,t}=0,
 \qquad
 Prepared_{i,t}=0.
-]
+\]
 
-If exporter (i) is available, it outputs latent scalar (z^Y_{i,t}\in\mathbb R) and chooses readiness target
+If exporter \(i\) is available, it outputs latent scalar \(z^Y_{i,t}\in\mathbb R\) and chooses
 
-[
+\[
 Y_{i,t}
 =
-\bar\lambda\operatorname{softplus}(z^Y_{i,t}).
-]
+Q_t\sigma(z^Y_{i,t}).
+\]
 
-Preparation is then mechanically determined by
+Hence
 
-[
+\[
+0\le Y_{i,t}\le Q_t.
+\]
+
+Preparation remains mechanical:
+
+\[
 Prepared_{i,t}
 =
 \max\{0,Y_{i,t}-I^E_{i,t}\}.
-]
+\]
 
-The AI therefore chooses a target, not an unconstrained physical shipment.
+The AI chooses a readiness target; it does not choose a physical shipment or create inventory outside the existing model mechanics.
 
-## 6. Training objective and reward
+## 7. Training objective and reward
 
-Model 0 does not contain calibrated prices, holding costs, shortage costs, or profit parameters. The AI specification therefore does not invent a monetary objective.
+Model 0 does not contain calibrated prices, holding costs, shortage costs, or profit parameters. The v0.1 AI benchmark therefore does not invent a monetary objective.
 
-The primary AI benchmark uses a common physical-efficiency team reward.
+It uses a common cooperative physical-efficiency reward:
 
-For each period,
-
-[
+\[
 r_t
 =
 -
@@ -323,11 +319,11 @@ LostSales_t+Waste_t
 }{
 \bar\lambda
 }.
-]
+\]
 
-At the terminal period, add
+At the terminal period, add:
 
-[
+\[
 r_T^{terminal}
 =
 -
@@ -336,13 +332,11 @@ OnHandInventory_T+PipelineInventory_T
 }{
 \bar\lambda
 }.
-]
+\]
 
-All agents receive the same scalar team reward, but no agent receives another actor's hidden observation.
+All agents receive the same scalar reward but do not receive another actor's hidden observation.
 
-The scale (\bar\lambda) changes reward magnitude only; it does not change the objective.
-
-The following evaluation outcomes are deliberately **not** included in reward:
+The following primary evaluation outcomes are deliberately excluded from the reward:
 
 - bullwhip ratios;
 - readiness/allocation gaps;
@@ -351,18 +345,20 @@ The following evaluation outcomes are deliberately **not** included in reward:
 
 They remain evaluation outcomes rather than directly optimized targets.
 
-This reward defines a cooperative operational AI benchmark. It is not a model of self-interested supplier profit maximization.
+Because target actions are bounded and perishable overstock generates waste, the reward cannot be improved through an unbounded inventory build-up.
 
-## 7. PPO training protocol
+This reward defines a **cooperative system-control benchmark**. It is not a model of self-interested supplier profit maximization.
 
-The primary v0.1 training configuration is fixed before the first training run:
+## 8. PPO training protocol
 
-| Item | Locked v0.1 value |
+The pre-registered v0.1 configuration is:
+
+| Item | v0.1 value |
 |---|---:|
 | optimizer | Adam |
-| learning rate | (3\times10^{-4}) |
-| discount factor (gamma) | 0.99 |
-| GAE (lambda) | 0.95 |
+| learning rate | \(3\times10^{-4}\) |
+| discount factor \(\gamma\) | 1.00 |
+| GAE \(\lambda\) | 0.95 |
 | PPO clip range | 0.20 |
 | value-loss coefficient | 0.50 |
 | entropy coefficient | 0.01 |
@@ -373,94 +369,84 @@ The primary v0.1 training configuration is fixed before the first training run:
 | hidden layers | 64, 64 |
 | activation | tanh |
 
-The discount factor is fixed at \(\gamma=1\) because the v0.1 objective is an undiscounted finite-horizon physical-efficiency objective. This prevents the terminal leftover-inventory penalty from becoming economically negligible merely because it occurs late in the episode.
+The discount factor is fixed at \(\gamma=1\) because the objective is an undiscounted finite-horizon physical-efficiency objective. This avoids making the terminal leftover-inventory penalty economically negligible solely because it occurs late in the episode.
 
 No hyperparameter search is permitted in v0.1. Any change requires a new specification revision committed before training.
 
-### 7.1 Training budget
+### 8.1 Training budget
 
-Each N/S/F AI architecture is trained for exactly
+Each \(N/S/F\) AI architecture is trained for exactly:
 
-[
-1000
-]
+\[
+1000\text{ episodes}\times1000\text{ days}
+\]
 
-episodes of
+for each of five pre-registered training seeds:
 
-[
-1000
-]
+\[
+41001,\ 41002,\ 41003,\ 41004,\ 41005.
+\]
 
-days for each training seed.
+For a given training seed and episode index, \(N,S,F\) use the same exogenous demand/availability scenario-seed sequence.
 
-The five pre-registered training seeds are:
+Network architecture, initialization convention, optimizer, and hyperparameters are identical across regimes.
 
-[
-41001,41002,41003,41004,41005.
-]
+There is no early stopping and no best-checkpoint selection based on final evaluation outcomes. The fixed-budget final checkpoint is used.
 
-For a given training seed and episode index, N, S, and F use the same exogenous demand and availability scenario seed sequence. Network architecture, initialization convention, optimizer, and hyperparameters are identical across regimes.
+### 8.2 Training sufficiency diagnostic
 
-There is no early stopping and no "best checkpoint" selection based on evaluation outcomes. The fixed-budget final checkpoint is the policy used for final evaluation.
+The 1000-episode budget is a pre-registered computational budget, not an assumption that every seed must mathematically converge.
 
-Intermediate checkpoints may be stored only for convergence diagnostics.
+For each training seed/regime:
 
-### 7.2 Training diagnostics
+1. compute mean episodic reward over episodes 601-800;
+2. compute mean episodic reward over episodes 801-1000;
+3. compute their relative change using the absolute earlier-window mean in the denominator with numerical epsilon;
+4. regress episodic reward on episode index over episodes 801-1000 and report the slope with its 95% confidence interval.
 
-Before evaluation, every training run must report:
+A run is labelled **training-stable** when:
 
-- episodic team reward trajectory;
-- policy and value losses;
-- entropy;
-- non-finite action/loss count;
-- distribution of transformed actions.
+- the absolute relative change between the two 200-episode windows is at most 5%; and
+- the 95% confidence interval for the final-window slope includes zero.
 
-A run with non-finite numerical values is an implementation failure. It is not silently rerun with a new seed.
+If these conditions fail, the run is reported as **not stabilized under the pre-registered budget**. The budget is not extended post hoc within v0.1.
 
-## 8. Paired final evaluation design
+A non-finite loss/action is an implementation failure and is not silently replaced by another seed.
 
-Final evaluation begins only after all training runs are complete and frozen.
+## 9. Final paired evaluation design
 
-The evaluation configuration uses the already validated Model 0 baseline:
+Final evaluation starts only after all training runs and checkpoints are frozen.
 
-[
-T=1000,
-\qquad
-Warmup=200.
-]
+Evaluation uses the validated Model 0 baseline horizon:
 
-Final evaluation uses
+\[
+T=1000,\qquad Warmup=200.
+\]
 
-[
-200
-]
+Use 200 held-out exogenous replications generated from evaluation master seed:
 
-held-out exogenous replications generated from master seed
-
-[
+\[
 52001.
-]
+\]
 
-These evaluation scenarios must not appear in training or development diagnostics.
+These scenarios may not appear in training or development diagnostics.
 
-For every evaluation replication, the same exogenous scenario is reused across:
+For each evaluation scenario, the same exogenous path is reused across:
 
-[
-N	ext{-RuleBased},
-S	ext{-RuleBased},
-F	ext{-RuleBased},
-N	ext{-AI},
-S	ext{-AI},
-F	ext{-AI}.
-]
+\[
+N\text{-RuleBased},\
+S\text{-RuleBased},\
+F\text{-RuleBased},\
+N\text{-AI},\
+S\text{-AI},\
+F\text{-AI}.
+\]
 
-For AI, each of the five frozen training-seed policies is evaluated on the same 200 scenario replications.
+Each of the five frozen AI training-seed policies is evaluated on the same 200 scenario replications.
 
 No learning, exploration noise, parameter update, normalization fitting, or checkpoint selection is allowed during final evaluation.
 
-AI evaluation uses deterministic policy means.
-
-## 9. Primary outcomes
+## 10. Primary outcomes
 
 The five primary outcomes are:
 
@@ -470,111 +456,132 @@ The five primary outcomes are:
 4. mean total inventory;
 5. mean absolute target-allocation gap averaged across the two exporters.
 
-The fifth outcome is defined as
+The fifth outcome is:
 
-[
+\[
 \frac12
 \left(
 MeanAbsTargetGap_1+MeanAbsTargetGap_2
 \right).
-]
+\]
 
 Secondary outcomes include retail-order bullwhip, total lost sales, total waste, and mean absolute stock-allocation gap.
 
-## 10. Primary estimands
+## 11. Primary estimands
 
-For any outcome (Y), define the vertical-information interaction:
+For outcome \(Y\), define the vertical-information interaction:
 
-[
+\[
 \Gamma_V(Y)
 =
 \left(Y_{S,AI}-Y_{N,AI}\right)
 -
 \left(Y_{S,RuleBased}-Y_{N,RuleBased}\right),
-]
+\]
 
 and the horizontal-information interaction:
 
-[
+\[
 \Gamma_H(Y)
 =
 \left(Y_{F,AI}-Y_{S,AI}\right)
 -
 \left(Y_{F,RuleBased}-Y_{S,RuleBased}\right).
-]
+\]
 
-These two difference-in-differences contrasts are the primary estimands because they directly test whether decision architecture changes the operational value of information architecture.
+These are the confirmatory estimands because they ask whether the decision architecture changes the operational effect of information architecture.
 
 Secondary contrasts are:
 
-[
+\[
 Y_{R,AI}-Y_{R,RuleBased},
 \qquad R\in\{N,S,F\},
-]
+\]
 
-plus the N-to-S and S-to-F information effects within the AI architecture.
+plus N-to-S and S-to-F information effects within AI.
 
-No universal ranking of regimes is pre-specified.
+No universal ranking is pre-specified.
 
-## 11. Uncertainty and reporting
+## 12. Uncertainty, pairing, and multiplicity
 
-Final effects are computed at the paired replication level.
+For each AI training seed \(s\) and evaluation scenario \(k\), compute the paired interaction using that seed's AI outcomes and the RuleBased outcomes from the same scenario.
 
-Uncertainty is reported with a hierarchical bootstrap using 10,000 resamples:
+Uncertainty uses a hierarchical bootstrap with 10,000 resamples:
 
 1. resample the five AI training seeds with replacement;
-2. resample the 200 evaluation scenario IDs with replacement while preserving all treatment outcomes within a scenario.
+2. resample the 200 scenario IDs with replacement;
+3. preserve all treatment outcomes belonging to a sampled scenario;
+4. recompute the interaction estimand.
 
-Report means and 95% bootstrap confidence intervals.
+This design treats five as the number of independent training-seed realizations; it does not treat repeated RuleBased values across AI seeds as additional independent RuleBased simulations.
 
-The final report must also show between-training-seed dispersion. A favorable single training seed may not be selected as the headline result.
+Report means, 95% bootstrap confidence intervals, and between-training-seed dispersion.
 
-## 12. Information-firewall requirements
+There are 10 confirmatory outcome-estimand combinations: five outcomes times \(\Gamma_V\) and \(\Gamma_H\).
 
-The merged PR #3 firewall remains binding.
+The primary report emphasizes effect sizes and confidence intervals rather than a binary winner. If formal significance claims are made, Holm adjustment is applied across the 10 confirmatory tests.
 
-The training implementation must satisfy all of the following:
+## 13. Information-firewall requirements
 
-- no actor policy receives `SupplyChainModel` or `ExogenousScenario`;
-- no policy replay/rollout buffer stores hidden state that was not in that actor's legal observation;
+The merged PR #3 firewall remains binding:
+
+- no actor policy receives \`SupplyChainModel\` or \`ExogenousScenario\`;
+- no rollout buffer stores hidden state not contained in that actor's legal observation;
 - no centralized critic receives full simulator state;
 - actor policy objects remain distinct;
-- N importer allocation cannot condition on current exporter availability;
+- importer procurement remains pre-revelation in all regimes;
+- N/S/F allocation remains the frozen deterministic mechanism;
 - N and S exporter readiness cannot condition on rival current availability;
-- S and F importer information remains identical;
-- the importer procurement decision remains pre-revelation in every regime;
-- no regime identifier is an AI input.
+- no regime identifier is an AI input;
+- final-evaluation scenarios are never used for training or model selection.
 
-## 13. What is explicitly out of scope for v0.1
+## 14. Why all discretionary nodes are changed together
 
-The following require separate future specifications:
+The confirmatory treatment is deliberately a system-level decision-architecture treatment:
+
+\[
+RuleBased\rightarrow AI
+\]
+
+at all discretionary replenishment/readiness nodes.
+
+Changing only one node would answer a different question: which local agent drives the effect. That is useful for mechanism decomposition but is not the primary factorial question.
+
+Therefore node-level ablations are reserved for a separately pre-specified extension and must not be used to select or redefine the v0.1 headline result.
+
+## 15. What is out of scope for v0.1
+
+The following require a new specification:
 
 - recurrent policies;
 - centralized training with decentralized execution;
-- parameter sharing;
+- actor parameter sharing;
+- AI-controlled importer allocation;
 - LLM or generative-agent policies;
 - monetary profit/cost rewards;
 - self-interested supplier objectives;
 - online learning during final evaluation;
 - hyperparameter search;
+- post-hoc extension of the training budget;
 - retraining separately for validation phase-map cells;
 - changing the demand process, physical network, shelf-life mechanics, or N/S/F information architecture.
 
-## 14. Specification lock and no-training gate
+## 16. Specification lock and no-training gate
 
-This document is **not locked merely because it exists on a branch**.
+This specification is not locked merely because it exists on a branch.
 
-The specification becomes locked only when:
+It becomes locked only when:
 
-1. this specification and its machine-readable companion are reviewed;
-2. CI on the specification PR passes;
-3. the PR is merged into `main`;
-4. the resulting merge commit is recorded as the AI-training base.
+1. scientific audit is complete;
+2. Markdown and machine-readable specification agree;
+3. contract tests and CI pass;
+4. PR #4 is merged into \`main\`;
+5. the resulting merge commit is recorded as the sole base for AI implementation.
 
-Until those conditions hold:
+Until then:
 
-[
+\[
 \boxed{\text{NO AI TRAINING RUNS}}
-]
+\]
 
 After lock, implementation must occur on a new branch created from the locked specification commit.
