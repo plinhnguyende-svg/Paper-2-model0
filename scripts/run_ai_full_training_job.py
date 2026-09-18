@@ -10,7 +10,10 @@ import re
 import subprocess
 import sys
 
+import numpy as np
+import pandas as pd
 import torch
+import yaml
 
 from paper2_model0.ai.launcher import (
     FROZEN_LAUNCHER_SHA_ENV,
@@ -61,6 +64,27 @@ def validate_workflow_context() -> None:
     execution_sha = os.environ.get("GITHUB_SHA", "").strip().lower()
     if not re.fullmatch(r"[0-9a-f]{40}", execution_sha):
         raise RuntimeError("workflow execution SHA must be a full git SHA")
+
+
+def validate_frozen_runtime_versions() -> None:
+    expected = {
+        "python": "3.12.14",
+        "numpy": "2.5.3",
+        "pandas": "3.0.6",
+        "pyyaml": "6.0.3",
+        "torch": "2.14.0",
+    }
+    observed = {
+        "python": platform.python_version(),
+        "numpy": np.__version__,
+        "pandas": pd.__version__,
+        "pyyaml": yaml.__version__,
+        "torch": torch.__version__,
+    }
+    if observed != expected:
+        raise RuntimeError(
+            f"frozen scientific runtime version drift: {observed!r}"
+        )
 
 
 def _sha256_bytes(value: bytes) -> str:
@@ -270,6 +294,7 @@ def main(argv: list[str] | None = None) -> int:
 
     validate_authorization_environment()
     validate_workflow_context()
+    validate_frozen_runtime_versions()
     configure_deterministic_runtime()
 
     pip_freeze_text, pip_freeze_sha256 = current_pip_freeze()
