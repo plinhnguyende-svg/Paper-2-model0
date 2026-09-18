@@ -70,6 +70,7 @@ class BoundaryAwareEpisodeRunner:
         scenario: ExogenousScenario,
         training_seed: int,
         device: str | torch.device = "cpu",
+        architecture: ActorLocalAIDecisionArchitecture | None = None,
     ):
         config.validate()
         if scenario.consumer_demand.shape[0] != config.simulation_horizon_days:
@@ -83,13 +84,25 @@ class BoundaryAwareEpisodeRunner:
         self.hyperparameters = PPOHyperparameters()
         self.hyperparameters.validate_locked_v01()
 
-        self.architecture = ActorLocalAIDecisionArchitecture(
-            config,
-            training_seed=self.training_seed,
-            deterministic=False,
-            device=self.device,
-            before_actor_decision=self._before_actor_decision,
-        )
+        if architecture is None:
+            self.architecture = ActorLocalAIDecisionArchitecture(
+                config,
+                training_seed=self.training_seed,
+                deterministic=False,
+                device=self.device,
+                before_actor_decision=self._before_actor_decision,
+            )
+        else:
+            if architecture.config != config:
+                raise ValueError("reused AI architecture config does not match runner config")
+            if int(architecture.training_seed) != self.training_seed:
+                raise ValueError(
+                    "reused AI architecture training seed does not match runner seed"
+                )
+            self.architecture = architecture
+            self.architecture.set_before_actor_decision_hook(
+                self._before_actor_decision
+            )
         self.model = SupplyChainModel(
             config,
             regime,
