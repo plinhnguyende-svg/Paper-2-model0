@@ -2,6 +2,15 @@ from pathlib import Path
 
 import yaml
 
+from paper2_model0.ai import (
+    EVALUATION_MASTER_SEED,
+    INFORMATION_REGIMES,
+    PPOHyperparameters,
+    TRAINING_EPISODE_DAYS,
+    TRAINING_EPISODES,
+    TRAINING_SEEDS,
+)
+
 
 SPEC_PATH = Path("experiments/ai_decision_architecture_spec_v0.1.yaml")
 FROZEN_FIREWALL_COMMIT = "a1c0b15163d05fd4b02ccdcb1fa2843a421a07d3"
@@ -91,3 +100,25 @@ def test_ai_spec_primary_estimands_outcomes_and_uncertainty_are_locked():
     assert spec["uncertainty"]["independent_training_seed_count"] == 5
     assert spec["uncertainty"]["confirmatory_test_count"] == 10
     assert spec["uncertainty"]["multiplicity_if_significance_claimed"] == "Holm"
+
+
+def test_runtime_training_contract_matches_locked_machine_readable_spec():
+    spec = _load_spec()
+    hp = PPOHyperparameters()
+
+    assert tuple(spec["factorial_design"]["information_regimes"]) == INFORMATION_REGIMES
+    assert tuple(spec["training"]["training_seeds"]) == TRAINING_SEEDS
+    assert spec["training"]["episodes_per_seed"] == TRAINING_EPISODES
+    assert spec["training"]["episode_horizon_days"] == TRAINING_EPISODE_DAYS
+    assert spec["evaluation"]["evaluation_master_seed"] == EVALUATION_MASTER_SEED
+
+    assert spec["ppo"]["learning_rate"] == hp.learning_rate
+    assert spec["ppo"]["gamma"] == hp.gamma
+    assert spec["ppo"]["gae_lambda"] == hp.gae_lambda
+    assert spec["ppo"]["clip_range"] == hp.clip_range
+    assert spec["ppo"]["value_loss_coefficient"] == hp.value_loss_coefficient
+    assert spec["ppo"]["entropy_coefficient"] == hp.entropy_coefficient
+    assert spec["ppo"]["max_gradient_norm"] == hp.max_gradient_norm
+    assert spec["ppo"]["rollout_length_days"] == hp.rollout_length_days
+    assert spec["ppo"]["minibatch_size"] == hp.minibatch_size
+    assert spec["ppo"]["update_epochs"] == hp.update_epochs
