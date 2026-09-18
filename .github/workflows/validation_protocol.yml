@@ -63,7 +63,7 @@ jobs:
             echo "factor=${{ inputs.factor }}" >> "$GITHUB_OUTPUT"
             echo "map_index=${{ inputs.map_index }}" >> "$GITHUB_OUTPUT"
           else
-            echo "stage=ofat_all" >> "$GITHUB_OUTPUT"
+            echo "stage=phase_all" >> "$GITHUB_OUTPUT"
             echo "factor=" >> "$GITHUB_OUTPUT"
             echo "map_index=0" >> "$GITHUB_OUTPUT"
           fi
