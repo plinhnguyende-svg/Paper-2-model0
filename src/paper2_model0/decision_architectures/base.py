@@ -13,30 +13,65 @@ from paper2_model0.policies.importer_replenishment import ImporterReplenishmentA
 from paper2_model0.policies.retailer_replenishment import RetailerAction
 
 
-class ObservationSafeDecisionArchitecture(Protocol):
-    """Decision interface that receives observations, never the simulation model.
+class RetailerDecisionPolicy(Protocol):
+    def decide(self, observation: RetailerObservation) -> RetailerAction: ...
 
-    Static configuration may be bound when an implementation is constructed.
-    Current-period physical state enters decisions only through the typed,
-    immutable observation objects supplied by the engine.
-    """
 
-    name: str
-
-    def retailer_replenishment(
-        self, observation: RetailerObservation
-    ) -> RetailerAction: ...
-
-    def importer_replenishment(
+class ImporterDecisionPolicy(Protocol):
+    def decide_replenishment(
         self, observation: ImporterReplenishmentObservation
     ) -> ImporterReplenishmentAction: ...
 
-    def importer_allocation(
+    def decide_allocation(
         self,
         procurement_requirement: float,
         observation: ImporterObservation,
     ) -> tuple[float, float]: ...
 
-    def exporter_readiness(
-        self, observation: ExporterObservation
-    ) -> ExporterReadinessAction: ...
+
+class ExporterDecisionPolicy(Protocol):
+    def decide(self, observation: ExporterObservation) -> ExporterReadinessAction: ...
+
+
+class ObservationSafeDecisionArchitecture(Protocol):
+    """Container of actor-isolated policy instances.
+
+    The container itself receives no observations. Current-period information is
+    routed by the engine directly to the policy instance belonging to the actor
+    that is allowed to observe it.
+    """
+
+    name: str
+    retailer_policies: tuple[
+        RetailerDecisionPolicy,
+        RetailerDecisionPolicy,
+        RetailerDecisionPolicy,
+    ]
+    importer_policy: ImporterDecisionPolicy
+    exporter_policies: tuple[
+        ExporterDecisionPolicy,
+        ExporterDecisionPolicy,
+    ]
+
+
+def validate_decision_architecture(
+    architecture: ObservationSafeDecisionArchitecture,
+) -> None:
+    """Reject policy bundles that can trivially share actor-local mutable state."""
+
+    if len(architecture.retailer_policies) != 3:
+        raise ValueError("Decision architecture must provide exactly 3 retailer policies.")
+    if len(architecture.exporter_policies) != 2:
+        raise ValueError("Decision architecture must provide exactly 2 exporter policies.")
+
+    controllers = [
+        *architecture.retailer_policies,
+        architecture.importer_policy,
+        *architecture.exporter_policies,
+    ]
+    identities = [id(controller) for controller in controllers]
+    if len(set(identities)) != len(identities):
+        raise ValueError(
+            "Actor policy instances must be distinct; shared policy objects create "
+            "an information side channel across agents."
+        )
