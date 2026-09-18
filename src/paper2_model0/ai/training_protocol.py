@@ -21,7 +21,7 @@ TRAINING_EPISODES = 1000
 TRAINING_EPISODE_DAYS = 1000
 EVALUATION_MASTER_SEED = 52001
 
-SCENARIO_SEED_PROTOCOL_VERSION = "training-scenario-sha256-v0.1"
+SCENARIO_SEED_PROTOCOL_VERSION = "training-scenario-injective-v0.1"
 CHECKPOINT_VERSION = "ai-training-checkpoint-v0.1"
 RUNNER_PROTOCOL_VERSION = "ai-full-training-v0.1"
 FROZEN_SMOKE_BASE = "dadfec406647065a2055d31b5bbbc404c2dbefe6"
@@ -77,18 +77,14 @@ def episode_scenario_seed(training_seed: int, episode_index: int) -> int:
     """
     seed = _validate_training_seed(training_seed)
     index = _validate_episode_index(episode_index)
-    payload = (
-        f"{SCENARIO_SEED_PROTOCOL_VERSION}|training|{seed}|episode|{index}"
-    ).encode("utf-8")
-    digest = hashlib.sha256(payload).digest()
-    candidate = int.from_bytes(digest[:8], "big") % (2**32 - 1)
-
-    # Reserve the evaluation master seed even under accidental hash collision.
+    # Injective on the locked domain: five 5-digit training seeds and
+    # episode indices 0..999. This avoids probabilistic hash collisions while
+    # remaining far from the reserved evaluation master seed namespace.
+    candidate = seed * TRAINING_EPISODES + index
+    if not 0 <= candidate < 2**32:
+        raise AssertionError("training scenario seed exceeded uint32 range")
     if candidate == EVALUATION_MASTER_SEED:
-        digest = hashlib.sha256(digest + b"|reserved-eval-seed-rehash").digest()
-        candidate = int.from_bytes(digest[:8], "big") % (2**32 - 1)
-        if candidate == EVALUATION_MASTER_SEED:
-            raise AssertionError("failed to domain-separate training seed stream")
+        raise AssertionError("evaluation master seed contaminated training stream")
     return int(candidate)
 
 
@@ -192,12 +188,20 @@ def validate_run_manifest(manifest: dict) -> None:
         raise ValueError(f"manifest missing fields: {sorted(missing)}")
     if manifest["runner_protocol_version"] != RUNNER_PROTOCOL_VERSION:
         raise ValueError("runner protocol version drift")
+    if manifest["frozen_smoke_base"] != FROZEN_SMOKE_BASE:
+        raise ValueError("frozen smoke base drift")
+    if manifest["ai_spec_base"] != AI_SPEC_BASE:
+        raise ValueError("AI specification base drift")
     if manifest["checkpoint_version"] != CHECKPOINT_VERSION:
         raise ValueError("checkpoint version drift")
     if manifest["scenario_seed_protocol_version"] != SCENARIO_SEED_PROTOCOL_VERSION:
         raise ValueError("scenario seed protocol version drift")
     if manifest["regime"] not in INFORMATION_REGIMES:
         raise ValueError("invalid manifest regime")
+    if tuple(manifest["pre_registered_training_seeds"]) != TRAINING_SEEDS:
+        raise ValueError("pre-registered training seed set drift")
+    if tuple(manifest["pre_registered_regimes"]) != INFORMATION_REGIMES:
+        raise ValueError("pre-registered information regime set drift")
     seed = _validate_training_seed(int(manifest["training_seed"]))
     if int(manifest["episode_budget"]) != TRAINING_EPISODES:
         raise ValueError("training episode budget drift")
