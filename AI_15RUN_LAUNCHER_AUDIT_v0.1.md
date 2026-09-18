@@ -80,6 +80,25 @@ The final-audit correction now:
 
 Tests explicitly simulate these crash residues.
 
+### Scope of the atomicity guarantee
+
+This is a **local-filesystem transaction guarantee**. It protects against a
+process interruption when the run directory itself survives.
+
+GitHub-hosted runners are ephemeral, so PR #9 does **not** claim that local
+files alone survive loss of an entire runner VM. The later explicit
+full-training workflow must provide the durable transport layer by:
+
+- restoring the latest committed job artifact before a resumed run;
+- uploading the committed job directory with an `if: always()` recovery step;
+- preserving `latest.json`, its referenced manifest/checkpoint, and
+  diagnostics together;
+- refusing resume when the durable artifact is incomplete or belongs to a
+  different frozen launcher/job.
+
+That persistence mechanism belongs to the separately audited workflow layer
+and is deliberately not implemented by PR #9.
+
 ### Replay/skip protection
 
 A new boundary can be committed only when:
