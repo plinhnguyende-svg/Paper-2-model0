@@ -12,6 +12,7 @@ from paper2_model0.config import SimulationConfig
 from paper2_model0.domain.scenario import ExogenousScenario
 
 from .environment import ActorLocalAIDecisionArchitecture
+from .ppo import PPOHyperparameters
 from .training_runner import ACTOR_NAMES
 
 
@@ -45,6 +46,56 @@ def simulation_config_payload(config: SimulationConfig) -> dict:
 def simulation_config_hash(config: SimulationConfig) -> str:
     return hashlib.sha256(
         _canonical_json(simulation_config_payload(config)).encode("utf-8")
+    ).hexdigest()
+
+
+def _validate_commit_sha(commit_sha: str) -> str:
+    value = str(commit_sha).strip().lower()
+    if len(value) != 40 or any(ch not in "0123456789abcdef" for ch in value):
+        raise ValueError("source_commit_sha must be a full 40-character git SHA")
+    return value
+
+
+def training_run_keys() -> tuple[tuple[str, int], ...]:
+    """The exact 15 confirmatory AI training jobs, without launching them."""
+    return tuple(
+        (regime, training_seed)
+        for regime in INFORMATION_REGIMES
+        for training_seed in TRAINING_SEEDS
+    )
+
+
+def validate_scientific_training_contract(
+    *,
+    regime: str,
+    training_seed: int,
+    config: SimulationConfig,
+    hyperparameters: PPOHyperparameters | None = None,
+) -> None:
+    if regime not in INFORMATION_REGIMES:
+        raise ValueError(f"regime must be one of {INFORMATION_REGIMES}")
+    _validate_training_seed(training_seed)
+    config.validate()
+    if config.simulation_horizon_days != TRAINING_EPISODE_DAYS:
+        raise ValueError(
+            "scientific AI training requires exactly 1000 Model-0 days per episode"
+        )
+    hp = hyperparameters or PPOHyperparameters()
+    hp.validate_locked_v01()
+    if TRAINING_EPISODES != 1000:
+        raise AssertionError("pre-registered training episode budget drift")
+    if training_run_keys() != tuple(
+        (regime_name, seed)
+        for regime_name in ("N", "S", "F")
+        for seed in (41001, 41002, 41003, 41004, 41005)
+    ):
+        raise AssertionError("pre-registered 15-run design drift")
+
+
+def run_manifest_hash(manifest: dict) -> str:
+    validate_run_manifest(manifest)
+    return hashlib.sha256(
+        _canonical_json(manifest).encode("utf-8")
     ).hexdigest()
 
 
@@ -128,16 +179,16 @@ def build_run_manifest(
     regime: str,
     training_seed: int,
     config: SimulationConfig,
+    source_commit_sha: str,
     episode_records: Iterable[dict] = (),
 ) -> dict:
-    if regime not in INFORMATION_REGIMES:
-        raise ValueError(f"regime must be one of {INFORMATION_REGIMES}")
+    validate_scientific_training_contract(
+        regime=regime,
+        training_seed=training_seed,
+        config=config,
+    )
     seed = _validate_training_seed(training_seed)
-    config.validate()
-    if config.simulation_horizon_days != TRAINING_EPISODE_DAYS:
-        raise ValueError(
-            "scientific training manifest requires exactly 1000 days per episode"
-        )
+    source_sha = _validate_commit_sha(source_commit_sha)
 
     records = [dict(record) for record in episode_records]
     manifest = {
@@ -146,6 +197,7 @@ def build_run_manifest(
         "scenario_seed_protocol_version": SCENARIO_SEED_PROTOCOL_VERSION,
         "frozen_smoke_base": FROZEN_SMOKE_BASE,
         "ai_spec_base": AI_SPEC_BASE,
+        "source_commit_sha": source_sha,
         "regime": regime,
         "training_seed": seed,
         "pre_registered_training_seeds": list(TRAINING_SEEDS),
@@ -170,6 +222,7 @@ def validate_run_manifest(manifest: dict) -> None:
         "scenario_seed_protocol_version",
         "frozen_smoke_base",
         "ai_spec_base",
+        "source_commit_sha",
         "regime",
         "training_seed",
         "pre_registered_training_seeds",
@@ -192,6 +245,7 @@ def validate_run_manifest(manifest: dict) -> None:
         raise ValueError("frozen smoke base drift")
     if manifest["ai_spec_base"] != AI_SPEC_BASE:
         raise ValueError("AI specification base drift")
+    _validate_commit_sha(manifest["source_commit_sha"])
     if manifest["checkpoint_version"] != CHECKPOINT_VERSION:
         raise ValueError("checkpoint version drift")
     if manifest["scenario_seed_protocol_version"] != SCENARIO_SEED_PROTOCOL_VERSION:
@@ -279,6 +333,7 @@ def checkpoint_payload(
     regime: str,
     completed_episode_count: int,
     config: SimulationConfig,
+    manifest: dict | None = None,
 ) -> dict:
     if regime not in INFORMATION_REGIMES:
         raise ValueError(f"regime must be one of {INFORMATION_REGIMES}")
@@ -287,6 +342,27 @@ def checkpoint_payload(
     if not 0 <= completed <= TRAINING_EPISODES:
         raise ValueError("invalid completed_episode_count")
     validate_finite_training_state(architecture)
+
+    manifest_sha256 = None
+    if config.simulation_horizon_days == TRAINING_EPISODE_DAYS:
+        if manifest is None:
+            raise ValueError(
+                "scientific training checkpoint requires its run manifest"
+            )
+        validate_run_manifest(manifest)
+        if manifest["regime"] != regime:
+            raise ValueError("checkpoint manifest regime mismatch")
+        if int(manifest["training_seed"]) != seed:
+            raise ValueError("checkpoint manifest training-seed mismatch")
+        if manifest["simulation_config_sha256"] != simulation_config_hash(config):
+            raise ValueError("checkpoint manifest config mismatch")
+        if int(manifest["completed_episode_count"]) != completed:
+            raise ValueError("checkpoint manifest episode-count mismatch")
+        manifest_sha256 = run_manifest_hash(manifest)
+    elif manifest is not None:
+        raise ValueError(
+            "non-scientific fixture checkpoint must not masquerade as a run manifest"
+        )
 
     return {
         "checkpoint_version": CHECKPOINT_VERSION,
@@ -299,6 +375,7 @@ def checkpoint_payload(
         "completed_episode_count": completed,
         "simulation_config": simulation_config_payload(config),
         "simulation_config_sha256": simulation_config_hash(config),
+        "run_manifest_sha256": manifest_sha256,
         "actors": {
             actor_name: architecture.agents[actor_name].checkpoint_state()
             for actor_name in ACTOR_NAMES
@@ -313,6 +390,7 @@ def save_training_checkpoint(
     regime: str,
     completed_episode_count: int,
     config: SimulationConfig,
+    manifest: dict | None = None,
 ) -> Path:
     destination = Path(path)
     destination.parent.mkdir(parents=True, exist_ok=True)
@@ -321,6 +399,7 @@ def save_training_checkpoint(
         regime=regime,
         completed_episode_count=completed_episode_count,
         config=config,
+        manifest=manifest,
     )
     torch.save(payload, destination)
     return destination
@@ -332,6 +411,7 @@ def load_training_checkpoint(
     config: SimulationConfig,
     expected_regime: str,
     expected_training_seed: int,
+    expected_manifest: dict | None = None,
     device: str | torch.device = "cpu",
 ) -> tuple[ActorLocalAIDecisionArchitecture, dict]:
     payload = torch.load(
@@ -352,6 +432,7 @@ def load_training_checkpoint(
         "completed_episode_count",
         "simulation_config",
         "simulation_config_sha256",
+        "run_manifest_sha256",
         "actors",
     }
     missing = required.difference(payload)
@@ -374,6 +455,27 @@ def load_training_checkpoint(
         raise ValueError("checkpoint training seed does not match requested resume seed")
     if payload["simulation_config_sha256"] != simulation_config_hash(config):
         raise ValueError("checkpoint simulation config does not match resume config")
+
+    manifest_digest = payload["run_manifest_sha256"]
+    if config.simulation_horizon_days == TRAINING_EPISODE_DAYS:
+        if expected_manifest is None:
+            raise ValueError(
+                "scientific checkpoint resume requires the matching run manifest"
+            )
+        validate_run_manifest(expected_manifest)
+        if run_manifest_hash(expected_manifest) != manifest_digest:
+            raise ValueError("checkpoint run-manifest hash mismatch")
+        if expected_manifest["regime"] != expected_regime:
+            raise ValueError("resume manifest regime mismatch")
+        if int(expected_manifest["training_seed"]) != expected_seed:
+            raise ValueError("resume manifest training-seed mismatch")
+        if int(expected_manifest["completed_episode_count"]) != int(
+            payload["completed_episode_count"]
+        ):
+            raise ValueError("resume manifest episode-count mismatch")
+    elif manifest_digest is not None:
+        raise ValueError("fixture checkpoint unexpectedly carries scientific manifest")
+
     if set(payload["actors"]) != set(ACTOR_NAMES):
         raise ValueError("checkpoint must contain exactly six actor states")
 
@@ -398,4 +500,5 @@ def load_training_checkpoint(
         "training_seed": int(payload["training_seed"]),
         "completed_episode_count": int(payload["completed_episode_count"]),
         "simulation_config_sha256": payload["simulation_config_sha256"],
+        "run_manifest_sha256": payload["run_manifest_sha256"],
     }
