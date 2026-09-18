@@ -1,6 +1,6 @@
 # Pre-Registered Full Training Runner Plan v0.1
 
-**Status:** RUNNER IMPLEMENTATION BRANCH OPEN / FULL TRAINING NOT YET AUTHORIZED
+**Status:** FINAL RUNNER AUDIT COMPLETE / FREEZE PENDING MERGE / FULL TRAINING NOT AUTHORIZED
 
 **Frozen smoke base:** \`dadfec406647065a2055d31b5bbbc404c2dbefe6\`
 
@@ -236,10 +236,17 @@ five-seed × 1000-episode jobs be launched.
 
 ## Current gate
 
+The final runner audit is recorded in `AI_FULL_TRAINING_RUNNER_AUDIT_v0.1.md`.
+
 \[
 \boxed{
-\text{RUNNER IMPLEMENTATION ALLOWED}
+\text{RUNNER FREEZE PENDING FINAL CI + MERGE}
 \quad;\quad
-\text{FULL PRE-REGISTERED TRAINING NOT YET STARTED}
+\text{NO 15-RUN LAUNCHER}
+\quad;\quad
+\text{NO FULL TRAINING}
 }
 \]
+
+After merge, the resulting merge commit is the sole allowed base for a
+separate launcher branch.
