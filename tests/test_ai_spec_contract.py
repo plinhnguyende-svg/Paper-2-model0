@@ -14,7 +14,7 @@ def _load_spec():
 
 def test_ai_spec_is_pretraining_and_pinned_to_frozen_firewall():
     spec = _load_spec()
-    assert spec["status"] == "draft_pre_training"
+    assert spec["status"] == "locked_pre_implementation"
     assert spec["frozen_firewall_base_commit"] == FROZEN_FIREWALL_COMMIT
     assert spec["no_training_gate"]["training_allowed_before_spec_merge"] is False
     assert spec["no_training_gate"]["implementation_branch_must_start_from_locked_spec_commit"] is True
