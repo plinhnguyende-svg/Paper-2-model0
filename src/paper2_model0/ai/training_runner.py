@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import math
+import os
 
 import numpy as np
 import pandas as pd
@@ -85,11 +86,19 @@ class BoundaryAwareEpisodeRunner:
         self.hyperparameters = PPOHyperparameters()
         self.hyperparameters.validate_locked_v01()
 
-        if not allow_test_fixture:
+        if allow_test_fixture:
+            # Tiny horizons exist only to exercise mechanics in pytest. Refuse
+            # this bypass from ordinary runtime code so scientific callers
+            # cannot opt out of the frozen contract by setting a constructor
+            # flag.
+            if not os.environ.get("PYTEST_CURRENT_TEST"):
+                raise RuntimeError(
+                    "allow_test_fixture is restricted to active pytest fixtures"
+                )
+        else:
             # Local import avoids a module-import cycle: training_protocol uses
-            # ACTOR_NAMES from this module. The production/default path is
-            # therefore contract-locked, while tiny deterministic unit fixtures
-            # must opt in explicitly.
+            # ACTOR_NAMES from this module. Every ordinary runtime call is
+            # therefore contract-locked.
             from .training_protocol import validate_scientific_training_contract
 
             validate_scientific_training_contract(
