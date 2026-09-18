@@ -54,3 +54,19 @@ __all__ += [
     "run_tiny_smoke_training",
     "tiny_deterministic_smoke_case",
 ]
+
+from .training_runner import (
+    ACTOR_NAMES,
+    BoundaryAwareEpisodeRunner,
+    BoundaryTrainingResult,
+    RolloutUpdateEvent,
+    expected_rollout_partition,
+)
+
+__all__ += [
+    "ACTOR_NAMES",
+    "BoundaryAwareEpisodeRunner",
+    "BoundaryTrainingResult",
+    "RolloutUpdateEvent",
+    "expected_rollout_partition",
+]
