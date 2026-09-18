@@ -61,7 +61,7 @@ jobs:
             echo "factor=${{ inputs.factor }}" >> "$GITHUB_OUTPUT"
             echo "map_index=${{ inputs.map_index }}" >> "$GITHUB_OUTPUT"
           else
-            echo "stage=warmup" >> "$GITHUB_OUTPUT"
+            echo "stage=replications" >> "$GITHUB_OUTPUT"
             echo "factor=" >> "$GITHUB_OUTPUT"
             echo "map_index=0" >> "$GITHUB_OUTPUT"
           fi
