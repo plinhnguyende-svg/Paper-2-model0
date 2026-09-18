@@ -200,7 +200,10 @@ def test_256_chunk_updates_each_actor_before_its_day_256_action():
         exporter_availability_probability=(1.0, 1.0),
     )
     demand = np.full((horizon, 3), 10.0, dtype=float)
-    availability = np.ones((horizon, 2), dtype=bool)
+    availability = np.asarray(
+        [[(t % 3) != 0, (t % 4) != 0] for t in range(horizon)],
+        dtype=bool,
+    )
     scenario = deterministic_scenario(demand, availability, seed=812256)
 
     runner = BoundaryAwareEpisodeRunner(
@@ -210,6 +213,7 @@ def test_256_chunk_updates_each_actor_before_its_day_256_action():
         training_seed=41001,
     )
     update_call_count = {actor: 0 for actor in ACTOR_NAMES}
+    captured_first_masks = {}
 
     expected_current_predecessors = {
         "R1": (),
@@ -227,6 +231,9 @@ def test_256_chunk_updates_each_actor_before_its_day_256_action():
                 records = runner.architecture.records_by_actor()
 
                 if update_call_count[actor_name] == 1:
+                    captured_first_masks[actor_name] = (
+                        batch.policy_mask.detach().cpu().numpy().copy()
+                    )
                     # The 256-transition update fires inside the pre-action hook.
                     # This actor has not yet recorded day 256, while actors that
                     # act earlier in the within-day sequence already have.
@@ -248,3 +255,12 @@ def test_256_chunk_updates_each_actor_before_its_day_256_action():
         assert [event.terminal for event in events] == [False, True]
         assert events[0].boundary_day == 256
         assert update_call_count[actor] == 2
+
+    np.testing.assert_array_equal(
+        captured_first_masks["E1"],
+        availability[:256, 0],
+    )
+    np.testing.assert_array_equal(
+        captured_first_masks["E2"],
+        availability[:256, 1],
+    )
