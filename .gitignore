@@ -7,3 +7,4 @@ __pycache__/
 .vscode/
 outputs/scratch/
 *.egg-info/
+outputs/validation_protocol_v0.1/
