@@ -240,7 +240,7 @@ def test_uninterrupted_and_save_resume_match_next_actions_and_subsequent_updates
         regime="F",
         scenario=first_scenario,
         training_seed=41001,
-        architecture=uninterrupted_architecture,
+        architecture=uninterrupted_architecture,        allow_test_fixture=True,
     )
     first_runner.run_episode()
 
@@ -258,7 +258,7 @@ def test_uninterrupted_and_save_resume_match_next_actions_and_subsequent_updates
         regime="F",
         scenario=second_scenario,
         training_seed=41001,
-        architecture=uninterrupted_architecture,
+        architecture=uninterrupted_architecture,        allow_test_fixture=True,
     ).run_episode()
 
     resumed_architecture, metadata = load_training_checkpoint(
@@ -274,7 +274,7 @@ def test_uninterrupted_and_save_resume_match_next_actions_and_subsequent_updates
         regime="F",
         scenario=second_scenario,
         training_seed=41001,
-        architecture=resumed_architecture,
+        architecture=resumed_architecture,        allow_test_fixture=True,
     ).run_episode()
 
     pdt.assert_frame_equal(
@@ -393,7 +393,7 @@ def test_episode_boundary_resets_only_diagnostic_traces_not_learning_state():
         regime="N",
         scenario=first_scenario,
         training_seed=41001,
-        architecture=architecture,
+        architecture=architecture,        allow_test_fixture=True,
     ).run_episode()
 
     first_network_state = {
@@ -417,7 +417,7 @@ def test_episode_boundary_resets_only_diagnostic_traces_not_learning_state():
         regime="N",
         scenario=second_scenario,
         training_seed=41001,
-        architecture=architecture,
+        architecture=architecture,        allow_test_fixture=True,
     )
 
     assert all(
