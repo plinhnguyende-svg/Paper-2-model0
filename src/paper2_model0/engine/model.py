@@ -16,7 +16,10 @@ from paper2_model0.agents.retailer import Retailer
 from paper2_model0.agents.importer import Importer
 from paper2_model0.agents.exporter import Exporter
 from paper2_model0.architectures import build_architecture
-from paper2_model0.decision_architectures import RuleBasedDecisionArchitecture
+from paper2_model0.decision_architectures import (
+    RuleBasedDecisionArchitecture,
+    validate_decision_architecture,
+)
 from paper2_model0.engine.recorder import Recorder
 
 
@@ -48,6 +51,7 @@ class SupplyChainModel:
         self.decision_architecture = (
             decision_architecture or RuleBasedDecisionArchitecture(config)
         )
+        validate_decision_architecture(self.decision_architecture)
         self.shipments = ShipmentManager()
         self.recorder = Recorder()
 
@@ -206,7 +210,9 @@ class SupplyChainModel:
         current_demand = tuple(float(x) for x in self.scenario.consumer_demand[day])
         fulfilled = []
         lost = []
-        for retailer, demand in zip(self.retailers, current_demand):
+        for retailer_index, (retailer, demand) in enumerate(
+            zip(self.retailers, current_demand)
+        ):
             f, l = retailer.serve_consumer_demand(demand)
             fulfilled.append(f)
             lost.append(l)
@@ -223,7 +229,9 @@ class SupplyChainModel:
                 ),
                 previous_forecast=retailer.demand_forecast,
             )
-            action = self.decision_architecture.retailer_replenishment(obs)
+            action = self.decision_architecture.retailer_policies[
+                retailer_index
+            ].decide(obs)
             retailer.demand_forecast = action.updated_forecast
             retailer_orders.append(action.replenishment_order)
         retailer_orders_t = tuple(retailer_orders)  # type: ignore[assignment]
@@ -239,7 +247,7 @@ class SupplyChainModel:
                 "B", c.shelf_life_days
             ),
         )
-        importer_action = self.decision_architecture.importer_replenishment(
+        importer_action = self.decision_architecture.importer_policy.decide_replenishment(
             importer_replenishment_obs
         )
         self.importer.downstream_order_forecast = importer_action.updated_forecast
@@ -266,14 +274,16 @@ class SupplyChainModel:
                 availability=availability,
                 rival_availability_probability=exporter.known_rival_availability_probability,
             )
-            action = self.decision_architecture.exporter_readiness(e_obs)
+            action = self.decision_architecture.exporter_policies[i].decide(
+                e_obs
+            )
             exporter.prepare_fresh_units(action.prepared_quantity)
             self.cumulative_prepared += action.prepared_quantity
             readiness_targets.append(action.readiness_target)
             prepared.append(action.prepared_quantity)
             observed_rival.append(e_obs.rival_operational_availability)
 
-        allocations = self.decision_architecture.importer_allocation(
+        allocations = self.decision_architecture.importer_policy.decide_allocation(
             q, importer_obs
         )
 
