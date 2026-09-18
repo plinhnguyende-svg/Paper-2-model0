@@ -320,3 +320,52 @@ def phase_map_diagnostic(
                     }
                 )
     return pd.DataFrame(rows)
+
+
+
+def summarize_phase_regions(phase_df: pd.DataFrame) -> pd.DataFrame:
+    """Summarize whether phase-map cells form stable, zero, or sign-reversal regions.
+
+    The input is the cell-level output of phase_map_diagnostic / phase_all.
+    A "sign reversal" is recorded only when both strictly positive and strictly
+    negative CI classifications occur for the same map, metric, and effect.
+    Cells whose CI overlaps zero are tracked separately rather than forced into
+    either sign.
+    """
+    required = {
+        "metric", "effect", "direction", "x_name", "x_value", "y_name", "y_value"
+    }
+    missing = required.difference(phase_df.columns)
+    if missing:
+        raise ValueError(f"phase_df missing required columns: {sorted(missing)}")
+
+    group_cols = ["x_name", "y_name", "metric", "effect"]
+    if "map_index" in phase_df.columns:
+        group_cols = ["map_index", *group_cols]
+
+    rows: list[dict] = []
+    for keys, group in phase_df.groupby(group_cols, dropna=False):
+        key_values = keys if isinstance(keys, tuple) else (keys,)
+        row = dict(zip(group_cols, key_values))
+        counts = group["direction"].value_counts()
+        positive = int(counts.get("positive", 0))
+        negative = int(counts.get("negative", 0))
+        overlaps_zero = int(counts.get("overlaps_zero", 0))
+        insufficient = int(counts.get("insufficient", 0))
+        total = int(len(group))
+        row.update(
+            {
+                "cells_total": total,
+                "cells_positive": positive,
+                "cells_negative": negative,
+                "cells_overlaps_zero": overlaps_zero,
+                "cells_insufficient": insufficient,
+                "share_positive": positive / total if total else float("nan"),
+                "share_negative": negative / total if total else float("nan"),
+                "share_overlaps_zero": overlaps_zero / total if total else float("nan"),
+                "has_sign_reversal": bool(positive > 0 and negative > 0),
+                "has_zero_boundary_region": bool(overlaps_zero > 0),
+            }
+        )
+        rows.append(row)
+    return pd.DataFrame(rows)
