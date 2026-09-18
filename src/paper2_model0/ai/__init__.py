@@ -88,11 +88,14 @@ from .training_protocol import (
     episode_scenario_seed,
     episode_seed_schedule,
     load_training_checkpoint,
+    run_manifest_hash,
     save_training_checkpoint,
     simulation_config_hash,
     simulation_config_payload,
+    training_run_keys,
     validate_finite_training_state,
     validate_run_manifest,
+    validate_scientific_training_contract,
 )
 
 __all__ += [
@@ -112,9 +115,12 @@ __all__ += [
     "episode_scenario_seed",
     "episode_seed_schedule",
     "load_training_checkpoint",
+    "run_manifest_hash",
     "save_training_checkpoint",
     "simulation_config_hash",
     "simulation_config_payload",
+    "training_run_keys",
     "validate_finite_training_state",
     "validate_run_manifest",
+    "validate_scientific_training_contract",
 ]
