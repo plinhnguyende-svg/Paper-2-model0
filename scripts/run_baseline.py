@@ -34,8 +34,9 @@ def main():
     summary.to_csv(output / "regime_summary.csv", index=False)
 
     selected = summary[summary["metric"].isin([
-        "service_level", "waste_rate", "retail_order_bullwhip",
-        "importer_procurement_bullwhip", "mean_abs_readiness_mismatch_1",
+        "service_level", "waste_share_of_terminal_outflow", "retail_order_bullwhip",
+        "importer_procurement_bullwhip", "mean_abs_target_allocation_gap_1",
+        "mean_abs_stock_allocation_gap_1",
     ])]
     print(selected.pivot(index="metric", columns="regime", values="mean").round(4))
 

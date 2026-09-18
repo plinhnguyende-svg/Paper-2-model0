@@ -255,9 +255,15 @@ class SupplyChainModel:
 
         allocations = self.importer_allocation_policy.decide(q, importer_obs)
 
-        # Mechanism metric is measured after readiness preparation but before fulfilment.
+        # Mechanism metrics are measured after readiness preparation but before fulfilment.
+        # target_allocation_gap isolates information/decision matching; stock_allocation_gap
+        # additionally captures carry-over inventory from prior periods.
         available_after_preparation = [e.inventory.total_quantity() for e in self.exporters]
-        readiness_mismatch = [
+        target_allocation_gap = [
+            readiness_targets[i] - allocations[i]
+            for i in range(2)
+        ]
+        stock_allocation_gap = [
             available_after_preparation[i] - allocations[i]
             for i in range(2)
         ]
@@ -306,10 +312,14 @@ class SupplyChainModel:
             "retailer_shipment_1": retailer_shipments[0],
             "retailer_shipment_2": retailer_shipments[1],
             "retailer_shipment_3": retailer_shipments[2],
-            "readiness_mismatch_1": readiness_mismatch[0],
-            "readiness_mismatch_2": readiness_mismatch[1],
-            "abs_readiness_mismatch_1": abs(readiness_mismatch[0]),
-            "abs_readiness_mismatch_2": abs(readiness_mismatch[1]),
+            "target_allocation_gap_1": target_allocation_gap[0],
+            "target_allocation_gap_2": target_allocation_gap[1],
+            "abs_target_allocation_gap_1": abs(target_allocation_gap[0]),
+            "abs_target_allocation_gap_2": abs(target_allocation_gap[1]),
+            "stock_allocation_gap_1": stock_allocation_gap[0],
+            "stock_allocation_gap_2": stock_allocation_gap[1],
+            "abs_stock_allocation_gap_1": abs(stock_allocation_gap[0]),
+            "abs_stock_allocation_gap_2": abs(stock_allocation_gap[1]),
             "total_on_hand_inventory_pre_aging": on_hand_before_aging,
             "total_on_hand_inventory": self._on_hand_total(),
             "total_pipeline_inventory": self.shipments.total_in_transit(),
