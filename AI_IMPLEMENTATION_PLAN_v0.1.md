@@ -29,15 +29,16 @@ This branch implements the frozen AI Decision Architecture Specification v0.1. I
 ## Current gate
 
 \[
-\boxed{\text{SMOKE MILESTONE FROZEN; FULL-TRAINING RUNNER IMPLEMENTATION OPEN}}
+\boxed{\text{FULL-TRAINING RUNNER AUDITED; FREEZE PENDING MERGE}}
 \]
 
-The corrected end-to-end smoke milestone has been reviewed and frozen. The
-separate `ai-full-training-v0.1` branch is now reserved for implementing the
-pre-registered full-training runner.
+The runner branch now contains the audited decision-boundary protocol,
+256-day PPO chunking, deterministic checkpoint/resume state, common N/S/F
+scenario-seed schedule, manifest binding, runtime fingerprint, and fail-fast
+contract tests.
 
-The runner itself must pass its own rollout-boundary, checkpoint/resume,
-scenario-pairing, non-finite, and manifest tests before any five-seed ×
-1000-episode training job is launched.
+There is still no 15-run launcher and no scientific full-budget training.
+Only after PR #8 is merged may a new launcher branch be created from that exact
+merge commit.
 
 No scientific AI performance claim is permitted at this gate.
