@@ -29,11 +29,16 @@ This branch implements the frozen AI Decision Architecture Specification v0.1. I
 ## Current gate
 
 \[
-\boxed{\text{TINY END-TO-END SMOKE HARNESS IMPLEMENTED; FULL PRE-REGISTERED TRAINING NOT YET AUTHORIZED}}
+\boxed{\text{FULL-TRAINING RUNNER AUDITED; FREEZE PENDING MERGE}}
 \]
 
-The deterministic pre-PPO components and actor-local PPO core have been frozen. A separate tiny deterministic harness now connects legal observations, actor-local policies, bounded actions, Model 0 transitions, physical team rewards, local rollouts, GAE, and PPO updates.
+The runner branch now contains the audited decision-boundary protocol,
+256-day PPO chunking, deterministic checkpoint/resume state, common N/S/F
+scenario-seed schedule, manifest binding, runtime fingerprint, and fail-fast
+contract tests.
 
-The next gate is CI plus review of the smoke artifact. The pre-registered five training seeds × 1000 episodes remain prohibited until this smoke milestone is frozen.
+There is still no 15-run launcher and no scientific full-budget training.
+Only after PR #8 is merged may a new launcher branch be created from that exact
+merge commit.
 
 No scientific AI performance claim is permitted at this gate.

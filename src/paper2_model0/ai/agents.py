@@ -17,6 +17,46 @@ class ActorLocalIPPOAgent:
     device: torch.device
     action_generator: torch.Generator
 
+    def value(self, observation: np.ndarray) -> float:
+        observation = np.asarray(observation, dtype=np.float32)
+        if observation.shape != (self.network.observation_dim,):
+            raise ValueError(
+                f"{self.name} expected observation shape "
+                f"({self.network.observation_dim},)"
+            )
+        tensor = torch.as_tensor(
+            observation,
+            dtype=torch.float32,
+            device=self.device,
+        )
+        with torch.no_grad():
+            value = self.network.value(tensor)
+        value_float = float(value.squeeze(0).cpu())
+        if not np.isfinite(value_float):
+            raise FloatingPointError(f"{self.name} produced a non-finite critic value")
+        return value_float
+
+    def checkpoint_state(self) -> dict:
+        return {
+            "network": self.network.state_dict(),
+            "updater": self.updater.checkpoint_state(),
+            "action_generator_state": self.action_generator.get_state().clone(),
+        }
+
+    def load_checkpoint_state(self, state: dict) -> None:
+        if set(state) != {
+            "network",
+            "updater",
+            "action_generator_state",
+        }:
+            raise ValueError(f"invalid checkpoint state for actor {self.name}")
+        self.network.load_state_dict(state["network"])
+        self.updater.load_checkpoint_state(state["updater"])
+        generator_state = state["action_generator_state"]
+        if not isinstance(generator_state, torch.Tensor):
+            raise ValueError("action generator state must be a tensor")
+        self.action_generator.set_state(generator_state.cpu())
+
     def act(
         self,
         observation: np.ndarray,
@@ -50,11 +90,18 @@ class ActorLocalIPPOAgent:
                 action = dist.mean + dist.stddev * noise
             log_prob = dist.log_prob(action).sum(dim=-1)
             value = self.network.value(tensor)
-        return (
-            action.squeeze(0).cpu().numpy().copy(),
-            float(log_prob.squeeze(0).cpu()),
-            float(value.squeeze(0).cpu()),
-        )
+        action_np = action.squeeze(0).cpu().numpy().copy()
+        log_prob_float = float(log_prob.squeeze(0).cpu())
+        value_float = float(value.squeeze(0).cpu())
+        if (
+            not np.isfinite(action_np).all()
+            or not np.isfinite(log_prob_float)
+            or not np.isfinite(value_float)
+        ):
+            raise FloatingPointError(
+                f"{self.name} produced non-finite action/log-prob/value"
+            )
+        return action_np, log_prob_float, value_float
 
 
 def _build_seed(training_seed: int, actor_index: int) -> int:

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Iterable
+from typing import Callable, Iterable
 
 import numpy as np
 import pandas as pd
@@ -27,6 +27,12 @@ from .ppo import ActorRolloutBuffer, PPOHyperparameters, PPOUpdateStats
 from .transforms import BoundedActionTransformer
 
 
+BeforeActorDecisionHook = Callable[
+    [str, np.ndarray, ActorLocalIPPOAgent],
+    None,
+]
+
+
 @dataclass(frozen=True)
 class DecisionRecord:
     day: int
@@ -46,12 +52,15 @@ class _AIRetailerPolicy:
         encoder: AIObservationEncoder,
         transformer: BoundedActionTransformer,
         deterministic: bool,
+        before_decision: BeforeActorDecisionHook | None = None,
     ):
         self.retailer_index = int(retailer_index)
+        self.actor_name = f"R{self.retailer_index + 1}"
         self.agent = agent
         self.encoder = encoder
         self.transformer = transformer
         self.deterministic = bool(deterministic)
+        self.before_decision = before_decision
         self.records: list[DecisionRecord] = []
 
     def decide(self, observation: RetailerObservation):
@@ -59,6 +68,8 @@ class _AIRetailerPolicy:
             observation,
             self.retailer_index,
         )
+        if self.before_decision is not None:
+            self.before_decision(self.actor_name, encoded, self.agent)
         latent, log_prob, value = self.agent.act(
             encoded,
             deterministic=self.deterministic,
@@ -88,11 +99,14 @@ class _AIImporterPolicy:
         encoder: AIObservationEncoder,
         transformer: BoundedActionTransformer,
         deterministic: bool,
+        before_decision: BeforeActorDecisionHook | None = None,
     ):
+        self.actor_name = "BQ"
         self.agent = agent
         self.encoder = encoder
         self.transformer = transformer
         self.deterministic = bool(deterministic)
+        self.before_decision = before_decision
         self.allocation_policy = RuleBasedImporterAllocationPolicy()
         self.records: list[DecisionRecord] = []
 
@@ -101,6 +115,8 @@ class _AIImporterPolicy:
         observation: ImporterReplenishmentObservation,
     ):
         encoded = self.encoder.encode_importer_replenishment(observation)
+        if self.before_decision is not None:
+            self.before_decision(self.actor_name, encoded, self.agent)
         latent, log_prob, value = self.agent.act(
             encoded,
             deterministic=self.deterministic,
@@ -140,15 +156,21 @@ class _AIExporterPolicy:
         encoder: AIObservationEncoder,
         transformer: BoundedActionTransformer,
         deterministic: bool,
+        actor_name: str,
+        before_decision: BeforeActorDecisionHook | None = None,
     ):
+        self.actor_name = str(actor_name)
         self.agent = agent
         self.encoder = encoder
         self.transformer = transformer
         self.deterministic = bool(deterministic)
+        self.before_decision = before_decision
         self.records: list[DecisionRecord] = []
 
     def decide(self, observation: ExporterObservation):
         encoded = self.encoder.encode_exporter(observation)
+        if self.before_decision is not None:
+            self.before_decision(self.actor_name, encoded, self.agent)
 
         if observation.own_operational_availability:
             latent, log_prob, value = self.agent.act(
@@ -208,8 +230,11 @@ class ActorLocalAIDecisionArchitecture:
         training_seed: int,
         deterministic: bool = False,
         device: str | torch.device = "cpu",
+        before_actor_decision: BeforeActorDecisionHook | None = None,
     ):
         self.config = config
+        self.training_seed = int(training_seed)
+        self.before_actor_decision = before_actor_decision
         self.encoder = AIObservationEncoder.from_config(config)
         self.transformer = BoundedActionTransformer(
             shelf_life_days=config.shelf_life_days,
@@ -231,6 +256,7 @@ class ActorLocalAIDecisionArchitecture:
                 encoder=self.encoder,
                 transformer=self.transformer,
                 deterministic=deterministic,
+                before_decision=self.before_actor_decision,
             ),
             _AIRetailerPolicy(
                 retailer_index=1,
@@ -238,6 +264,7 @@ class ActorLocalAIDecisionArchitecture:
                 encoder=self.encoder,
                 transformer=self.transformer,
                 deterministic=deterministic,
+                before_decision=self.before_actor_decision,
             ),
             _AIRetailerPolicy(
                 retailer_index=2,
@@ -245,6 +272,7 @@ class ActorLocalAIDecisionArchitecture:
                 encoder=self.encoder,
                 transformer=self.transformer,
                 deterministic=deterministic,
+                before_decision=self.before_actor_decision,
             ),
         )
         self.importer_policy = _AIImporterPolicy(
@@ -252,6 +280,7 @@ class ActorLocalAIDecisionArchitecture:
             encoder=self.encoder,
             transformer=self.transformer,
             deterministic=deterministic,
+            before_decision=self.before_actor_decision,
         )
         self.exporter_policies = (
             _AIExporterPolicy(
@@ -259,15 +288,41 @@ class ActorLocalAIDecisionArchitecture:
                 encoder=self.encoder,
                 transformer=self.transformer,
                 deterministic=deterministic,
+                actor_name="E1",
+                before_decision=self.before_actor_decision,
             ),
             _AIExporterPolicy(
                 agent=self.agents["E2"],
                 encoder=self.encoder,
                 transformer=self.transformer,
                 deterministic=deterministic,
+                actor_name="E2",
+                before_decision=self.before_actor_decision,
             ),
         )
         validate_decision_architecture(self)
+
+    def set_before_actor_decision_hook(
+        self,
+        hook: BeforeActorDecisionHook | None,
+    ) -> None:
+        self.before_actor_decision = hook
+        for policy in self.retailer_policies:
+            policy.before_decision = hook
+        self.importer_policy.before_decision = hook
+        for policy in self.exporter_policies:
+            policy.before_decision = hook
+
+    def clear_episode_records(self) -> None:
+        """Clear diagnostic decision traces without touching learned state.
+
+        Networks, optimizer state, action RNGs, and PPO shuffle RNGs persist
+        across episodes. Only per-episode trace records are reset so a
+        1000-episode run does not accumulate millions of stale DecisionRecord
+        objects or blur episode boundaries.
+        """
+        for records in self.records_by_actor().values():
+            records.clear()
 
     def records_by_actor(self) -> dict[str, list[DecisionRecord]]:
         return {
