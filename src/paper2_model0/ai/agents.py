@@ -17,6 +17,22 @@ class ActorLocalIPPOAgent:
     device: torch.device
     action_generator: torch.Generator
 
+    def value(self, observation: np.ndarray) -> float:
+        observation = np.asarray(observation, dtype=np.float32)
+        if observation.shape != (self.network.observation_dim,):
+            raise ValueError(
+                f"{self.name} expected observation shape "
+                f"({self.network.observation_dim},)"
+            )
+        tensor = torch.as_tensor(
+            observation,
+            dtype=torch.float32,
+            device=self.device,
+        )
+        with torch.no_grad():
+            value = self.network.value(tensor)
+        return float(value.squeeze(0).cpu())
+
     def act(
         self,
         observation: np.ndarray,
