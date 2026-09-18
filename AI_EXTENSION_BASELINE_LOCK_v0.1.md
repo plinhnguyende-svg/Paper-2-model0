@@ -35,9 +35,9 @@ For every information regime, RuleBased and AI treatments must receive the same 
 Any AI policy must therefore satisfy:
 
 [
-mathcal I_N^{AI}=mathcal I_N^{RuleBased},quad
-mathcal I_S^{AI}=mathcal I_S^{RuleBased},quad
-mathcal I_F^{AI}=mathcal I_F^{RuleBased}.
+\mathcal I_N^{AI}=\mathcal I_N^{RuleBased},\qquad
+\mathcal I_S^{AI}=\mathcal I_S^{RuleBased},\qquad
+\mathcal I_F^{AI}=\mathcal I_F^{RuleBased}.
 ]
 
 The AI extension must not obtain hidden physical state merely because the simulator has access to it.
