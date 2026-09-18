@@ -30,6 +30,17 @@ class RunResult:
     period_df: object
 
 
+@dataclass(frozen=True)
+class DecisionBoundary:
+    """State after exogenous/start-of-day consequences, before any day action."""
+
+    day: int
+    transit_waste: float
+    current_demand: tuple[float, float, float]
+    fulfilled: tuple[float, float, float]
+    lost: tuple[float, float, float]
+
+
 class SupplyChainModel:
     TOL = 1e-8
 
@@ -97,6 +108,7 @@ class SupplyChainModel:
         self.cumulative_prepared = 0.0
         self.cumulative_consumed = 0.0
         self.cumulative_waste = 0.0
+        self._open_boundary: DecisionBoundary | None = None
 
     def _initialize_inventory(self) -> None:
         c = self.config
@@ -202,19 +214,58 @@ class SupplyChainModel:
         if not np.isclose(lhs, rhs, atol=1e-7, rtol=1e-9):
             raise AssertionError(f"Material balance failure: lhs={lhs}, rhs={rhs}, diff={lhs-rhs}")
 
-    def step(self, day: int) -> None:
-        c = self.config
+    def open_decision_boundary(self, day: int) -> DecisionBoundary:
+        """Advance only through start-of-day exogenous consequences.
+
+        This boundary is intentionally before every learnable decision on the
+        day. It lets a training runner finalize transition t-1, bootstrap each
+        actor on its next legal local observation, update that actor, and only
+        then sample the day-t action.
+        """
+        if self._open_boundary is not None:
+            raise RuntimeError(
+                "cannot open a new decision boundary before completing the current one"
+            )
+        if not 0 <= int(day) < self.config.simulation_horizon_days:
+            raise IndexError("day is outside the configured simulation horizon")
+
         transit_waste = self._receive_due_shipments(day)
         self.cumulative_waste += transit_waste
 
-        current_demand = tuple(float(x) for x in self.scenario.consumer_demand[day])
-        fulfilled = []
-        lost = []
+        current_demand = tuple(
+            float(x) for x in self.scenario.consumer_demand[day]
+        )
+        fulfilled: list[float] = []
+        lost: list[float] = []
         for retailer, demand in zip(self.retailers, current_demand):
             f, l = retailer.serve_consumer_demand(demand)
-            fulfilled.append(f)
-            lost.append(l)
+            fulfilled.append(float(f))
+            lost.append(float(l))
             self.cumulative_consumed += f
+
+        boundary = DecisionBoundary(
+            day=int(day),
+            transit_waste=float(transit_waste),
+            current_demand=current_demand,  # type: ignore[arg-type]
+            fulfilled=tuple(fulfilled),  # type: ignore[arg-type]
+            lost=tuple(lost),  # type: ignore[arg-type]
+        )
+        self._open_boundary = boundary
+        return boundary
+
+    def complete_decision_boundary(self, boundary: DecisionBoundary) -> dict:
+        """Execute all day decisions and post-decision physical transitions."""
+        if self._open_boundary is None:
+            raise RuntimeError("no decision boundary is currently open")
+        if boundary is not self._open_boundary:
+            raise ValueError("boundary does not match the model's open boundary")
+
+        day = boundary.day
+        c = self.config
+        current_demand = boundary.current_demand
+        fulfilled = boundary.fulfilled
+        lost = boundary.lost
+        transit_waste = boundary.transit_waste
 
         retailer_orders = []
         for retailer_index, (retailer, demand) in enumerate(
@@ -236,7 +287,9 @@ class SupplyChainModel:
             retailer_orders.append(action.replenishment_order)
         retailer_orders_t = tuple(retailer_orders)  # type: ignore[assignment]
 
-        retailer_shipments = self._dispatch_importer_to_retailers(retailer_orders_t, day)
+        retailer_shipments = self._dispatch_importer_to_retailers(
+            retailer_orders_t, day
+        )
 
         importer_replenishment_obs = ImporterReplenishmentObservation(
             current_day=day,
@@ -247,18 +300,24 @@ class SupplyChainModel:
                 "B", c.shelf_life_days
             ),
         )
-        importer_action = self.decision_architecture.importer_policy.decide_replenishment(
-            importer_replenishment_obs
+        importer_action = (
+            self.decision_architecture.importer_policy.decide_replenishment(
+                importer_replenishment_obs
+            )
         )
         self.importer.downstream_order_forecast = importer_action.updated_forecast
         q = importer_action.procurement_requirement
 
-        availability = tuple(bool(x) for x in self.scenario.exporter_availability[day])
+        availability = tuple(
+            bool(x) for x in self.scenario.exporter_availability[day]
+        )
         importer_obs = self.architecture.importer_observation(
             day=day,
             retailer_orders=retailer_orders_t,
             on_hand_inventory=self.importer.inventory.total_quantity(),
-            usable_pipeline_inventory=self.shipments.usable_pipeline_quantity("B", c.shelf_life_days),
+            usable_pipeline_inventory=self.shipments.usable_pipeline_quantity(
+                "B", c.shelf_life_days
+            ),
             availability=availability,
         )
 
@@ -272,7 +331,9 @@ class SupplyChainModel:
                 procurement_requirement=q,
                 on_hand_inventory=exporter.inventory.total_quantity(),
                 availability=availability,
-                rival_availability_probability=exporter.known_rival_availability_probability,
+                rival_availability_probability=(
+                    exporter.known_rival_availability_probability
+                ),
             )
             action = self.decision_architecture.exporter_policies[i].decide(
                 e_obs
@@ -287,21 +348,20 @@ class SupplyChainModel:
             q, importer_obs
         )
 
-        # Mechanism metrics are measured after readiness preparation but before fulfilment.
-        # target_allocation_gap isolates information/decision matching; stock_allocation_gap
-        # additionally captures carry-over inventory from prior periods.
-        available_after_preparation = [e.inventory.total_quantity() for e in self.exporters]
+        available_after_preparation = [
+            e.inventory.total_quantity() for e in self.exporters
+        ]
         target_allocation_gap = [
-            readiness_targets[i] - allocations[i]
-            for i in range(2)
+            readiness_targets[i] - allocations[i] for i in range(2)
         ]
         stock_allocation_gap = [
-            available_after_preparation[i] - allocations[i]
-            for i in range(2)
+            available_after_preparation[i] - allocations[i] for i in range(2)
         ]
 
         upstream_shipments = []
-        for i, (exporter, allocation) in enumerate(zip(self.exporters, allocations)):
+        for i, (exporter, allocation) in enumerate(
+            zip(self.exporters, allocations)
+        ):
             request = allocation if availability[i] else 0.0
             qty, _ = self._dispatch_lots(
                 exporter.exporter_id,
@@ -314,7 +374,6 @@ class SupplyChainModel:
             upstream_shipments.append(qty)
 
         on_hand_before_aging = self._on_hand_total()
-
         on_hand_waste = self._age_all_inventory()
         self.cumulative_waste += on_hand_waste
 
@@ -363,6 +422,12 @@ class SupplyChainModel:
 
         self._assert_nonnegative()
         self._assert_material_balance()
+        self._open_boundary = None
+        return row
+
+    def step(self, day: int) -> None:
+        boundary = self.open_decision_boundary(day)
+        self.complete_decision_boundary(boundary)
 
     def run(self):
         for day in range(self.config.simulation_horizon_days):
