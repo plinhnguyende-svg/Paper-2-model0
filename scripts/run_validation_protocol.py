@@ -35,7 +35,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "stage",
-        choices=["warmup", "replications", "seeds", "ofat", "phase"],
+        choices=["warmup", "replications", "seeds", "ofat", "ofat_all", "phase", "phase_all"],
     )
     parser.add_argument(
         "--config",
@@ -83,40 +83,71 @@ def main():
         )
         path = out / "seed_stability.csv"
 
-    elif args.stage == "ofat":
+    elif args.stage in {"ofat", "ofat_all"}:
         s = spec["ofat"]
-        if args.factor is None:
-            raise SystemExit(
-                "--factor is required for the ofat stage; choose one key under ofat.factors"
+        if args.stage == "ofat":
+            if args.factor is None:
+                raise SystemExit(
+                    "--factor is required for the ofat stage; choose one key under ofat.factors"
+                )
+            if args.factor not in s["factors"]:
+                raise SystemExit(f"Unknown OFAT factor: {args.factor}")
+            df = ofat_diagnostic(
+                base_config,
+                factor_name=args.factor,
+                values=s["factors"][args.factor],
+                number_of_replications=int(s["number_of_replications"]),
+                master_seed=int(s["master_seed"]),
             )
-        if args.factor not in s["factors"]:
-            raise SystemExit(f"Unknown OFAT factor: {args.factor}")
-        df = ofat_diagnostic(
-            base_config,
-            factor_name=args.factor,
-            values=s["factors"][args.factor],
-            number_of_replications=int(s["number_of_replications"]),
-            master_seed=int(s["master_seed"]),
-        )
-        safe = args.factor.replace("/", "_")
-        path = out / f"ofat_{safe}.csv"
+            safe = args.factor.replace("/", "_")
+            path = out / f"ofat_{safe}.csv"
+        else:
+            frames = []
+            for factor_name, values in s["factors"].items():
+                frames.append(
+                    ofat_diagnostic(
+                        base_config,
+                        factor_name=factor_name,
+                        values=values,
+                        number_of_replications=int(s["number_of_replications"]),
+                        master_seed=int(s["master_seed"]),
+                    )
+                )
+            import pandas as pd
+            df = pd.concat(frames, ignore_index=True)
+            path = out / "ofat_all.csv"
 
     else:
         s = spec["phase_maps"]
         maps = s["maps"]
-        if not 0 <= args.map_index < len(maps):
-            raise SystemExit("--map-index is outside the configured phase-map list")
-        m = maps[args.map_index]
-        df = phase_map_diagnostic(
-            base_config,
-            x_name=m["x_name"],
-            x_values=m["x_values"],
-            y_name=m["y_name"],
-            y_values=m["y_values"],
-            number_of_replications=int(s["number_of_replications"]),
-            master_seed=int(s["master_seed"]),
+        if args.stage == "phase":
+            if not 0 <= args.map_index < len(maps):
+                raise SystemExit("--map-index is outside the configured phase-map list")
+            selected_maps = [(args.map_index, maps[args.map_index])]
+        else:
+            selected_maps = list(enumerate(maps))
+
+        frames = []
+        for map_index, m in selected_maps:
+            tmp = phase_map_diagnostic(
+                base_config,
+                x_name=m["x_name"],
+                x_values=m["x_values"],
+                y_name=m["y_name"],
+                y_values=m["y_values"],
+                number_of_replications=int(s["number_of_replications"]),
+                master_seed=int(s["master_seed"]),
+            )
+            tmp.insert(0, "map_index", map_index)
+            frames.append(tmp)
+
+        import pandas as pd
+        df = pd.concat(frames, ignore_index=True)
+        path = (
+            out / f"phase_map_{args.map_index}.csv"
+            if args.stage == "phase"
+            else out / "phase_maps_all.csv"
         )
-        path = out / f"phase_map_{args.map_index}.csv"
 
     df.to_csv(path, index=False)
     print(f"Wrote {len(df)} rows to {path}")
