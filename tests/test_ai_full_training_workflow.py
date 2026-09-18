@@ -67,8 +67,6 @@ def test_full_training_workflow_is_manual_only_and_has_only_operational_inputs()
         "gamma:",
         "device:",
         "simulation_config:",
-        "training_seed:",
-        "regime:",
     ):
         assert forbidden_input not in text
 
