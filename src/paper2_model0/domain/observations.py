@@ -11,6 +11,15 @@ class RetailerObservation:
 
 
 @dataclass(frozen=True)
+class ImporterReplenishmentObservation:
+    current_day: int
+    current_retailer_orders: tuple[float, float, float]
+    previous_forecast: float
+    on_hand_inventory: float
+    usable_pipeline_inventory: float
+
+
+@dataclass(frozen=True)
 class ImporterObservation:
     current_day: int
     current_retailer_orders: tuple[float, float, float]
