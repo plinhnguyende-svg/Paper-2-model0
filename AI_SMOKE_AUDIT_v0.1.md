@@ -26,7 +26,7 @@ Use decision-transition rewards:
 r_t
 =
 -
-\frac{Waste_t+LostSales_{t+1}}{\bar\lambda},
+\frac{OnHandWaste_t+TransitWaste_{t+1}+LostSales_{t+1}}{\bar\lambda},
 \qquad t<T-1.
 \]
 
@@ -36,14 +36,15 @@ For the final transition:
 r_{T-1}
 =
 -
-\frac{Waste_{T-1}}{\bar\lambda}
+\frac{OnHandWaste_{T-1}}{\bar\lambda}
 -
 \frac{OnHand_T+Pipeline_T}{\bar\lambda}.
 \]
 
-Day-0 lost sales are excluded because they occur before any AI action. For a
-fixed scenario and initial condition this exclusion is a policy-independent
-constant, so it does not create a policy-selection incentive.
+Day-0 lost sales and day-0 transit waste are excluded because they occur
+before any AI action. For a fixed scenario and initial condition these
+exclusions are policy-independent constants, so they do not create a
+policy-selection incentive.
 
 ### Audit disposition
 
