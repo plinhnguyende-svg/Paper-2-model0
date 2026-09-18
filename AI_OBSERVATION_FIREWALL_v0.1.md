@@ -15,22 +15,23 @@ The only scientific question at this stage is:
 
 ## Design
 
-The engine now calls an `ObservationSafeDecisionArchitecture` interface.
+The engine now uses an `ObservationSafeDecisionArchitecture` container whose
+actor policies are separate stateful objects.
 
-The interface exposes four decision points:
+The container provides:
 
-1. retailer replenishment;
-2. importer replenishment;
-3. importer allocation;
-4. exporter readiness.
+1. three retailer policy instances, one per retailer;
+2. one importer policy instance, covering importer replenishment and allocation;
+3. two exporter policy instances, one per exporter.
 
-Current-period physical state is passed through frozen typed observation
-objects. Static configuration is bound when a decision architecture is
-constructed.
+The container itself receives no observations. The engine routes each frozen
+typed observation directly to the policy instance belonging to the actor that
+is permitted to observe it. Static configuration is bound when the actor policy
+is constructed.
 
 The validated RuleBased policies are retained behind
-`RuleBasedDecisionArchitecture`, an adapter that delegates to the original
-policy implementations.
+`RuleBasedDecisionArchitecture`, which creates actor-isolated adapters around
+the original policy implementations.
 
 ## Information firewall
 
@@ -44,6 +45,11 @@ policy implementations.
 The future AI implementation must use exactly these policy-boundary
 observations. It must not read the `SupplyChainModel`, `ExogenousScenario`,
 raw demand path, or raw exporter-availability path.
+
+Policy instances must also be actor-isolated. The same mutable policy object
+cannot be reused for two retailers, two exporters, or across importer/exporter
+roles. This prevents a trivial memory side channel in which one agent caches a
+state observation and another agent later reads it.
 
 ## Why importer replenishment has a separate observation
 
@@ -67,6 +73,8 @@ pre-revelation procurement requirement through hidden simulator access.
 - S and F expose the same verified current exporter state to the importer;
 - N and S hide rival current availability from exporters;
 - F exposes rival current availability to exporters;
+- each retailer and exporter is routed to a distinct policy instance;
+- shared actor-policy instances are rejected as an information side channel;
 - a deterministic AI-shaped stub can replace the RuleBased decision
   architecture without changing outputs when it delegates the same decisions;
 - no decision-boundary observation exposes the exogenous scenario object.
