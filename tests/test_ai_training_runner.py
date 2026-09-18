@@ -105,7 +105,7 @@ def test_previous_transition_reward_is_finalized_only_after_next_preaction_bound
     runner._finalize_previous_at_boundary(b1)
 
     expected = -(
-        row0["on_hand_waste"] + b1.transit_waste + sum(b1.lost)
+        row0["on_hand_waste"] + b1.transit_waste + sum(b1.lost)        allow_test_fixture=True,
     ) / sum(config.retailer_mean_demand)
 
     for buffer in runner.buffers.values():
@@ -163,7 +163,7 @@ def test_nonterminal_chunk_bootstraps_current_legal_state_before_update():
     assert event.bootstrap_value == pytest.approx(3.5)
     np.testing.assert_allclose(
         captured["bootstrap_observation"],
-        next_observation,
+        next_observation,        allow_test_fixture=True,
     )
     assert float(captured["batch"].returns[-1].cpu()) == pytest.approx(3.5)
 
@@ -198,7 +198,7 @@ def test_256_chunk_updates_each_actor_before_its_day_256_action():
         importer_to_retailer_lead_time_days=1,
         retailer_mean_demand=(10.0, 10.0, 10.0),
         demand_forecast_smoothing_weight=0.30,
-        exporter_availability_probability=(1.0, 1.0),
+        exporter_availability_probability=(1.0, 1.0),        allow_test_fixture=True,
     )
     demand = np.full((horizon, 3), 10.0, dtype=float)
     availability = np.asarray(
@@ -259,7 +259,7 @@ def test_256_chunk_updates_each_actor_before_its_day_256_action():
 
     np.testing.assert_array_equal(
         captured_first_masks["E1"],
-        availability[:256, 0],
+        availability[:256, 0],        allow_test_fixture=True,
     )
     np.testing.assert_array_equal(
         captured_first_masks["E2"],
