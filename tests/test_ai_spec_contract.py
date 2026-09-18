@@ -30,6 +30,7 @@ def test_ai_spec_preserves_factorial_identification_and_local_information():
     assert spec["actor_instances"]["shared_mutable_policy_instances_allowed"] is False
     assert spec["observation_encoding"]["include_regime_label"] is False
     assert spec["observation_encoding"]["include_current_day"] is False
+    assert spec["observation_encoding"]["identical_input_dimension_across_regimes"] is True
 
 
 def test_ai_spec_training_budget_and_evaluation_are_pre_registered():
@@ -39,6 +40,7 @@ def test_ai_spec_training_budget_and_evaluation_are_pre_registered():
     assert spec["training"]["episodes_per_seed"] == 1000
     assert spec["training"]["episode_horizon_days"] == 1000
     assert spec["training"]["training_seeds"] == [41001, 41002, 41003, 41004, 41005]
+    assert spec["training"]["same_network_and_initialization_convention_across_N_S_F"] is True
     assert spec["training"]["early_stopping"] is False
     assert spec["evaluation"]["held_out_replications"] == 200
     assert spec["evaluation"]["evaluation_master_seed"] == 52001
