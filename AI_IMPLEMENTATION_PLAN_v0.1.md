@@ -29,11 +29,15 @@ This branch implements the frozen AI Decision Architecture Specification v0.1. I
 ## Current gate
 
 \[
-\boxed{\text{TINY END-TO-END SMOKE HARNESS IMPLEMENTED; FULL PRE-REGISTERED TRAINING NOT YET AUTHORIZED}}
+\boxed{\text{SMOKE MILESTONE FROZEN; FULL-TRAINING RUNNER IMPLEMENTATION OPEN}}
 \]
 
-The deterministic pre-PPO components and actor-local PPO core have been frozen. A separate tiny deterministic harness now connects legal observations, actor-local policies, bounded actions, Model 0 transitions, physical team rewards, local rollouts, GAE, and PPO updates.
+The corrected end-to-end smoke milestone has been reviewed and frozen. The
+separate `ai-full-training-v0.1` branch is now reserved for implementing the
+pre-registered full-training runner.
 
-The next gate is CI plus review of the smoke artifact. The pre-registered five training seeds × 1000 episodes remain prohibited until this smoke milestone is frozen.
+The runner itself must pass its own rollout-boundary, checkpoint/resume,
+scenario-pairing, non-finite, and manifest tests before any five-seed ×
+1000-episode training job is launched.
 
 No scientific AI performance claim is permitted at this gate.
