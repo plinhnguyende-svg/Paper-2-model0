@@ -185,7 +185,11 @@ def build_launcher_manifest(
     return manifest
 
 
-def validate_launcher_manifest(manifest: dict) -> None:
+def validate_launcher_manifest(
+    manifest: dict,
+    *,
+    verify_all_scenarios: bool = False,
+) -> None:
     validate_run_manifest(manifest)
     if manifest.get("launcher_protocol_version") != LAUNCHER_PROTOCOL_VERSION:
         raise ValueError("launcher protocol version drift")
@@ -203,9 +207,17 @@ def validate_launcher_manifest(manifest: dict) -> None:
         raise ValueError("launcher manifest does not use the locked baseline config")
 
     # The generic runner manifest guarantees contiguous indices and locked
-    # episode seeds. The launcher additionally proves that each scenario_id is
-    # the exact immutable scenario generated from that seed and frozen config.
-    for record in manifest["episodes"]:
+    # episode seeds. During ordinary episode commits only the newly appended
+    # record needs regeneration because the prior prefix is hash-bound and
+    # compared with the previously committed manifest. Resume performs a
+    # one-time full scenario-id audit.
+    records = manifest["episodes"]
+    records_to_verify = (
+        records
+        if verify_all_scenarios
+        else records[-1:]
+    )
+    for record in records_to_verify:
         expected = generate_scenario(
             locked_config,
             int(record["episode_seed"]),
@@ -403,7 +415,10 @@ class LauncherRunStore:
 
         manifest_path = self.state_dir / str(pointer["manifest_file"])
         manifest = _read_json(manifest_path)
-        validate_launcher_manifest(manifest)
+        validate_launcher_manifest(
+            manifest,
+            verify_all_scenarios=True,
+        )
         if manifest["regime"] != self.job.regime:
             raise ValueError("resume manifest regime does not match launcher job")
         if int(manifest["training_seed"]) != self.job.training_seed:
