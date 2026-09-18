@@ -28,9 +28,9 @@ This branch implements the frozen AI Decision Architecture Specification v0.1. I
 
 ## Current gate
 
-[
+\[
 \boxed{\text{PRE-PPO COMPONENTS IMPLEMENTED; PPO TRAINER NOT YET AUTHORIZED}}
-]
+\]
 
 Observation encoders, bounded action transforms, fixed forecast-transition adapters, and their tests are now the first implementation milestone. Neural-network and PPO trainer code should be added only after this milestone passes CI and review.
 
