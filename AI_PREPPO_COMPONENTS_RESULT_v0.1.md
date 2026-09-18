@@ -31,9 +31,9 @@ Neither current day nor regime label is encoded.
 
 The transforms implement the locked specification:
 
-[
-S^{R_r}_t=Llambda_rsigma(z^{R_r}_t),
-]
+\[
+S^{R_r}_t=L\lambda_r\sigma(z^{R_r}_t),
+\]
 
 [
 S^B_t=Larlambdasigma(z^{B,Q}_t),
@@ -41,9 +41,9 @@ S^B_t=Larlambdasigma(z^{B,Q}_t),
 
 and, for an available exporter,
 
-[
-Y_{i,t}=Q_tsigma(z^Y_{i,t}).
-]
+\[
+Y_{i,t}=Q_t\sigma(z^Y_{i,t}).
+\]
 
 Unavailable exporters are forced to zero readiness/preparation.
 
