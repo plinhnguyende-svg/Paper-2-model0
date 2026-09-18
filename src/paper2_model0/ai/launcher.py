@@ -39,6 +39,7 @@ from .training_runner import ACTOR_NAMES, BoundaryAwareEpisodeRunner, BoundaryTr
 
 LAUNCHER_PROTOCOL_VERSION = "ai-15run-launcher-v0.1"
 FROZEN_RUNNER_BASE = "d310ad960a410d03b87b123dfdc45b2bbf45946d"
+LOCKED_TRAINING_DEVICE = "cpu"
 FULL_TRAINING_AUTH_ENV = "PAPER2_AI_FULL_TRAINING_AUTHORIZED"
 FROZEN_LAUNCHER_SHA_ENV = "PAPER2_AI_FROZEN_LAUNCHER_SHA"
 
@@ -70,6 +71,11 @@ class LauncherResumeState:
     manifest: dict
     diagnostics: tuple[dict, ...]
     next_episode_index: int
+
+
+def validate_launcher_device(device: str | torch.device) -> None:
+    if str(torch.device(device)) != LOCKED_TRAINING_DEVICE:
+        raise ValueError("confirmatory launcher is locked to CPU execution")
 
 
 def locked_simulation_config() -> SimulationConfig:
@@ -131,6 +137,7 @@ def build_dry_run_contract() -> dict:
         "episode_count_per_job": TRAINING_EPISODES,
         "episode_horizon_days": TRAINING_EPISODE_DAYS,
         "simulation_config_sha256": simulation_config_hash(config),
+        "locked_training_device": LOCKED_TRAINING_DEVICE,
         "jobs": jobs,
         "full_training_authorized": False,
     }
@@ -172,6 +179,7 @@ def build_launcher_manifest(
     manifest["launcher_protocol_version"] = LAUNCHER_PROTOCOL_VERSION
     manifest["frozen_runner_base"] = FROZEN_RUNNER_BASE
     manifest["launcher_job_id"] = job.job_id
+    manifest["locked_training_device"] = LOCKED_TRAINING_DEVICE
     validate_launcher_manifest(manifest)
     return manifest
 
@@ -185,6 +193,8 @@ def validate_launcher_manifest(manifest: dict) -> None:
     job = locked_job(manifest["regime"], int(manifest["training_seed"]))
     if manifest.get("launcher_job_id") != job.job_id:
         raise ValueError("launcher manifest job id mismatch")
+    if manifest.get("locked_training_device") != LOCKED_TRAINING_DEVICE:
+        raise ValueError("launcher training device drift")
     if manifest["simulation_config_sha256"] != simulation_config_hash(
         locked_simulation_config()
     ):
@@ -481,6 +491,7 @@ def load_or_initialize_locked_job(
 ) -> LauncherResumeState:
     config = config or locked_simulation_config()
     validate_launcher_config(config)
+    validate_launcher_device(device)
     validate_scientific_training_contract(
         regime=job.regime,
         training_seed=job.training_seed,
@@ -654,7 +665,6 @@ def run_locked_training_job(
     output_root: str | Path,
     job: LauncherJob,
     source_commit_sha: str,
-    device: str | torch.device = "cpu",
 ) -> dict:
     """Run exactly one frozen scientific job after an explicit freeze gate.
 
@@ -663,6 +673,7 @@ def run_locked_training_job(
     """
     require_full_training_authorization(source_commit_sha)
     config = locked_simulation_config()
+    device = LOCKED_TRAINING_DEVICE
     state = load_or_initialize_locked_job(
         output_root=output_root,
         job=job,
