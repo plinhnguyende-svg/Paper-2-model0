@@ -27,3 +27,18 @@ The previously created evaluator ref
 must be treated as superseded for final execution if this hotfix passes audit.
 It must not be moved. A new immutable evaluator ref will be created from the
 audited hotfix head instead.
+
+Additional fail-closed audit:
+- the 3,600-row synthetic collector test now immediately repeats collection
+  against the same final-panel path and requires `FileExistsError`;
+- repeated collection must therefore validate evidence but cannot overwrite
+  an already committed final panel.
+
+Ref roles are intentionally distinct:
+- `ai-final-evaluator-v0.1-frozen` remains the immutable legacy evaluator
+  snapshot at `0c9c35b78c9740aa38f85a75a2ac383bcf2260ad` and will not move;
+- after this hotfix is audited and merged, a new immutable evaluator ref will
+  be created for the corrected evaluator SHA;
+- `ai-final-evaluation-v0.1-frozen` is reserved as the later workflow execution
+  ref required by the authorization gate. It must not be dispatched while it
+  still points to an evaluator-only commit.
