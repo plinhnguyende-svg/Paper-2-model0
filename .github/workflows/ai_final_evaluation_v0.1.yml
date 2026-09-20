@@ -112,7 +112,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          python evaluator/scripts/audit_ai_evaluation_archives.py             --download             --archive-dir outputs/checkpoints/archives             --output outputs/checkpoints/loader_audit.json
+          (cd evaluator && PYTHONPATH=src python scripts/audit_ai_evaluation_archives.py --download --archive-dir ../outputs/checkpoints/archives --output ../outputs/checkpoints/loader_audit.json)
 
       - name: Persist verified checkpoint bundle
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
