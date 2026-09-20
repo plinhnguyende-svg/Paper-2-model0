@@ -69,6 +69,21 @@ def load_panel(path: Path) -> pd.DataFrame:
     counts = frame.groupby("scenario_index").size()
     if not (counts == 18).all():
         raise ValueError("each scenario must contain exactly 18 treatment-policy rows")
+
+    expected_keys = {(r, "RuleBased", None) for r in REGIMES} | {
+        (r, "AI", s) for r in REGIMES for s in TRAINING_SEEDS
+    }
+    for _, group in frame.groupby("scenario_index"):
+        keys = set()
+        for row in group.itertuples():
+            seed = None if pd.isna(row.training_seed) else int(row.training_seed)
+            key = (str(row.regime), str(row.decision_architecture), seed)
+            if key in keys:
+                raise ValueError("duplicate treatment-policy row within scenario")
+            keys.add(key)
+        if keys != expected_keys:
+            raise ValueError("missing or unexpected treatment-policy row within scenario")
+
     if frame["scenario_id"].nunique() != 200:
         raise ValueError("scenario IDs must be unique across 200 scenarios")
     if frame["evaluation_scenario_seed"].nunique() != 200:
