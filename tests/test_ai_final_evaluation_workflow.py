@@ -282,6 +282,7 @@ def test_partial_and_completed_shard_resume_without_heldout_generation(
     partial_store.initialize(partial_contract)
     partial_store.commit_scenario(_rows(0, EVALUATOR_SHA), partial_contract)
     partial = guard.validate_restored_shard(
+        control_root=tmp_path / "control",
         manifest_path=manifest_path,
         shard_dir=partial_root,
         shard_id=0,
@@ -303,6 +304,7 @@ def test_partial_and_completed_shard_resume_without_heldout_generation(
         complete_store.commit_scenario(_rows(index, EVALUATOR_SHA), complete_contract)
     complete_store.finalize(complete_contract)
     complete = guard.validate_restored_shard(
+        control_root=tmp_path / "control",
         manifest_path=manifest_path,
         shard_dir=complete_root,
         shard_id=1,
@@ -318,6 +320,7 @@ def test_missing_resume_artifact_and_incomplete_collector_fail_closed(
     monkeypatch.chdir(tmp_path)
     with pytest.raises(FileNotFoundError, match="prior shard artifact"):
         guard.validate_restored_shard(
+            control_root=tmp_path / "control",
             manifest_path=manifest_path,
             shard_dir=tmp_path / "missing-shard",
             shard_id=0,
@@ -328,6 +331,7 @@ def test_missing_resume_artifact_and_incomplete_collector_fail_closed(
     (shard_parent / "shard-000").mkdir()
     with pytest.raises(ValueError, match="exactly the forty"):
         guard.validate_collector_set(
+            control_root=tmp_path / "control",
             manifest_path=manifest_path,
             shard_parent=shard_parent,
         )
@@ -361,6 +365,7 @@ def test_full_synthetic_collector_set_is_exact_3600_rows_without_generation(
         store.finalize(contract)
 
     result = guard.validate_collector_set(
+        control_root=tmp_path / "control",
         manifest_path=manifest_path,
         shard_parent=parent,
     )
