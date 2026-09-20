@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="820" viewBox="0 0 1100 820">
+<style>text{font-family:Arial,sans-serif;font-size:14px;fill:currentColor}.title{font-size:20px;font-weight:700}.label{font-weight:700}.axis{stroke:currentColor;stroke-width:1}.ci{stroke:currentColor;stroke-width:3}.zero{stroke:currentColor;stroke-width:1;stroke-dasharray:5 5}.point{fill:currentColor}</style>
+<text x="20" y="32" class="title">PRIMARY interaction estimates — frozen 95% intervals</text>
+<text x="20" y="54">PRIMARY — presentation only; each outcome has its own scale.</text>
+<text x="20" y="96" class="label">Service level</text>
+<line x1="320.00" y1="192" x2="1040.00" y2="192" class="axis"/>
+<line x1="642.87" y1="108" x2="642.87" y2="192" class="zero"/>
+<text x="250" y="130" text-anchor="end">Gamma_V</text>
+<text x="250" y="167" text-anchor="end">Gamma_H</text>
+<text x="320.00" y="212" text-anchor="start">-0.335465</text>
+<text x="1040.00" y="212" text-anchor="end">0.412624</text>
+<line x1="369.66" y1="125" x2="650.10" y2="125" class="ci"/>
+<circle cx="511.53" cy="125" r="5" class="point"/>
+<line x1="646.73" y1="162" x2="990.34" y2="162" class="ci"/>
+<circle cx="787.38" cy="162" r="5" class="point"/>
+<text x="20" y="246" class="label">Waste share of terminal outflow</text>
+<line x1="320.00" y1="342" x2="1040.00" y2="342" class="axis"/>
+<line x1="669.62" y1="258" x2="669.62" y2="342" class="zero"/>
+<text x="250" y="280" text-anchor="end">Gamma_V</text>
+<text x="250" y="317" text-anchor="end">Gamma_H</text>
+<text x="320.00" y="362" text-anchor="start">-0.264963</text>
+<text x="1040.00" y="362" text-anchor="end">0.280691</text>
+<line x1="568.13" y1="275" x2="990.34" y2="275" class="ci"/>
+<circle cx="737.05" cy="275" r="5" class="point"/>
+<line x1="369.66" y1="312" x2="817.72" y2="312" class="ci"/>
+<circle cx="641.57" cy="312" r="5" class="point"/>
+<text x="20" y="396" class="label">Importer procurement bullwhip</text>
+<line x1="320.00" y1="492" x2="1040.00" y2="492" class="axis"/>
+<line x1="445.80" y1="408" x2="445.80" y2="492" class="zero"/>
+<text x="250" y="430" text-anchor="end">Gamma_V</text>
+<text x="250" y="467" text-anchor="end">Gamma_H</text>
+<text x="320.00" y="512" text-anchor="start">-37.011695</text>
+<text x="1040.00" y="512" text-anchor="end">174.819731</text>
+<line x1="369.66" y1="425" x2="594.83" y2="425" class="ci"/>
+<circle cx="458.74" cy="425" r="5" class="point"/>
+<line x1="407.59" y1="462" x2="990.34" y2="462" class="ci"/>
+<circle cx="719.42" cy="462" r="5" class="point"/>
+<text x="20" y="546" class="label">Mean total inventory</text>
+<line x1="320.00" y1="642" x2="1040.00" y2="642" class="axis"/>
+<line x1="747.41" y1="558" x2="747.41" y2="642" class="zero"/>
+<text x="250" y="580" text-anchor="end">Gamma_V</text>
+<text x="250" y="617" text-anchor="end">Gamma_H</text>
+<text x="320.00" y="662" text-anchor="start">-52.916661</text>
+<text x="1040.00" y="662" text-anchor="end">36.223908</text>
+<line x1="369.66" y1="575" x2="857.41" y2="575" class="ci"/>
+<circle cx="650.90" cy="575" r="5" class="point"/>
+<line x1="678.33" y1="612" x2="990.34" y2="612" class="ci"/>
+<circle cx="839.63" cy="612" r="5" class="point"/>
+<text x="20" y="696" class="label">Target-allocation gap</text>
+<line x1="320.00" y1="792" x2="1040.00" y2="792" class="axis"/>
+<line x1="727.69" y1="708" x2="727.69" y2="792" class="zero"/>
+<text x="250" y="730" text-anchor="end">Gamma_V</text>
+<text x="250" y="767" text-anchor="end">Gamma_H</text>
+<text x="320.00" y="812" text-anchor="start">-55.937685</text>
+<text x="1040.00" y="812" text-anchor="end">42.849882</text>
+<line x1="369.66" y1="725" x2="718.62" y2="725" class="ci"/>
+<circle cx="593.82" cy="725" r="5" class="point"/>
+<line x1="552.20" y1="762" x2="990.34" y2="762" class="ci"/>
+<circle cx="726.10" cy="762" r="5" class="point"/>
+</svg>
