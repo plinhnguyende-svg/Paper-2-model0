@@ -247,3 +247,48 @@ def test_history_path_cannot_escape_frozen_layout(tmp_path):
 def test_monolithic_final_evaluation_path_is_permanently_disabled(tmp_path):
     with pytest.raises(PermissionError, match="Monolithic"):
         ev.run_final_evaluation(tmp_path, tmp_path / "out", SOURCE)
+
+
+def test_latent_authorization_gate_is_closed_by_default(monkeypatch):
+    for key in (
+        "PAPER2_AI_FINAL_EVALUATION_AUTHORIZED",
+        "PAPER2_AI_FROZEN_EVALUATOR_SHA",
+        "PAPER2_AI_FROZEN_WORKFLOW_SHA",
+        "GITHUB_ACTIONS", "GITHUB_EVENT_NAME", "GITHUB_REPOSITORY",
+        "GITHUB_REF", "GITHUB_WORKFLOW_REF", "GITHUB_SHA",
+        "GITHUB_RUN_ID", "GITHUB_RUN_ATTEMPT",
+    ):
+        monkeypatch.delenv(key, raising=False)
+    with pytest.raises(PermissionError, match="not frozen/authorized"):
+        ev.require_evaluation_freeze()
+
+
+def test_latent_authorization_requires_exact_frozen_workflow_provenance(monkeypatch):
+    evaluator = "a" * 40
+    workflow = "b" * 40
+    values = {
+        "PAPER2_AI_FINAL_EVALUATION_AUTHORIZED": "YES",
+        "PAPER2_AI_FROZEN_EVALUATOR_SHA": evaluator,
+        "PAPER2_AI_FROZEN_WORKFLOW_SHA": workflow,
+        "GITHUB_ACTIONS": "true",
+        "GITHUB_EVENT_NAME": "workflow_dispatch",
+        "GITHUB_REPOSITORY": ev.FROZEN_EVALUATION_REPOSITORY,
+        "GITHUB_REF": ev.FROZEN_EVALUATION_REF,
+        "GITHUB_WORKFLOW_REF": (
+            f"{ev.FROZEN_EVALUATION_REPOSITORY}/{ev.FROZEN_EVALUATION_WORKFLOW_PATH}"
+            f"@{ev.FROZEN_EVALUATION_REF}"
+        ),
+        "GITHUB_SHA": workflow,
+        "GITHUB_RUN_ID": "90001",
+        "GITHUB_RUN_ATTEMPT": "1",
+    }
+    for key, value in values.items():
+        monkeypatch.setenv(key, value)
+    monkeypatch.setattr(ev.subprocess, "check_output", lambda *a, **k: evaluator + "\n")
+    auth = ev.require_evaluation_freeze()
+    assert auth["evaluator_sha"] == evaluator
+    assert auth["workflow_sha"] == workflow
+    assert auth["run_id"] == 90001
+    monkeypatch.setenv("GITHUB_SHA", "c" * 40)
+    with pytest.raises(PermissionError, match="workflow execution SHA"):
+        ev.require_evaluation_freeze()
