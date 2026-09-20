@@ -48,7 +48,10 @@ def rows_for(index, c):
                 "regime": regime,
                 "decision_architecture": "AI",
                 "training_seed": training_seed,
-                "checkpoint_sha256": "c" * 64,
+                "checkpoint_sha256": next(
+                    e["final_checkpoint_sha256"] for e in ev.frozen_registry()["entries"]
+                    if e["regime"] == regime and e["training_seed"] == training_seed
+                ),
                 "source_sha": SOURCE,
                 "registry_sha256": ev.REGISTRY_SHA256,
                 **{m: 2.0 + index for m in ev.PRIMARY + ev.SECONDARY},
@@ -183,3 +186,64 @@ def test_collector_rejects_incomplete_shard_set(tmp_path):
             workflow_commit_sha=WORKFLOW,
             origin_run_id=RUN_ID,
         )
+
+
+def test_completed_shard_finalize_is_idempotent_for_resume(tmp_path):
+    shard = ex.evaluation_shards()[0]
+    c = contract(shard)
+    root = tmp_path / "shard-000"
+    store = ex.EvaluationShardStore(root, shard)
+    store.initialize(c)
+    for index in shard.scenario_indices:
+        real_rows = rows_for(index, c)
+        registry = {(e["regime"], e["training_seed"]): e for e in ev.frozen_registry()["entries"]}
+        for row in real_rows:
+            if row["training_seed"] is not None:
+                row["checkpoint_sha256"] = registry[row["regime"], row["training_seed"]]["final_checkpoint_sha256"]
+        store.commit_scenario(real_rows, c)
+    first = store.finalize(c)
+    second = store.finalize(c)
+    assert first == second
+
+
+def test_row_validation_binds_frozen_seed_and_checkpoint(tmp_path):
+    c = contract()
+    rows = rows_for(0, c)
+    registry = {(e["regime"], e["training_seed"]): e for e in ev.frozen_registry()["entries"]}
+    for row in rows:
+        if row["training_seed"] is not None:
+            row["checkpoint_sha256"] = registry[row["regime"], row["training_seed"]]["final_checkpoint_sha256"]
+    ex.validate_scenario_rows(rows, 0, c)
+    wrong_seed = [dict(row) for row in rows]
+    for row in wrong_seed:
+        row["evaluation_scenario_seed"] = "123"
+    with pytest.raises(ValueError, match="frozen schedule"):
+        ex.validate_scenario_rows(wrong_seed, 0, c)
+    wrong_checkpoint = [dict(row) for row in rows]
+    next(row for row in wrong_checkpoint if row["training_seed"] is not None)["checkpoint_sha256"] = "0" * 64
+    with pytest.raises(ValueError, match="checkpoint provenance"):
+        ex.validate_scenario_rows(wrong_checkpoint, 0, c)
+
+
+def test_history_path_cannot_escape_frozen_layout(tmp_path):
+    shard = ex.evaluation_shards()[0]
+    c = contract(shard)
+    root = tmp_path / "shard-000"
+    store = ex.EvaluationShardStore(root, shard)
+    store.initialize(c)
+    rows = rows_for(0, c)
+    registry = {(e["regime"], e["training_seed"]): e for e in ev.frozen_registry()["entries"]}
+    for row in rows:
+        if row["training_seed"] is not None:
+            row["checkpoint_sha256"] = registry[row["regime"], row["training_seed"]]["final_checkpoint_sha256"]
+    store.commit_scenario(rows, c)
+    latest = json.loads(store.latest_path.read_text())
+    latest["history"][0]["file"] = "../outside.jsonl"
+    store.latest_path.write_text(json.dumps(latest), encoding="utf-8")
+    with pytest.raises(ValueError, match="frozen layout"):
+        store.load(c)
+
+
+def test_monolithic_final_evaluation_path_is_permanently_disabled(tmp_path):
+    with pytest.raises(PermissionError, match="Monolithic"):
+        ev.run_final_evaluation(tmp_path, tmp_path / "out", SOURCE)

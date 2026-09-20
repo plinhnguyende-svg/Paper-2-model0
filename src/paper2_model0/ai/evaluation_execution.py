@@ -11,6 +11,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import hashlib
 import json
+import math
 import os
 from pathlib import Path
 from typing import Iterable
@@ -165,6 +166,9 @@ def validate_scenario_rows(rows: list[dict], scenario_index: int, contract: dict
         raise ValueError("scenario_id must be common and non-empty")
     if len(scenario_seeds) != 1 or "" in scenario_seeds:
         raise ValueError("evaluation scenario seed must be common and non-empty")
+    expected_seed = str(ev.evaluation_seed_schedule()[scenario_index])
+    if scenario_seeds != {expected_seed}:
+        raise ValueError("evaluation scenario seed differs from frozen schedule")
     keys = {
         (
             str(row.get("regime")),
@@ -175,16 +179,30 @@ def validate_scenario_rows(rows: list[dict], scenario_index: int, contract: dict
     }
     if keys != _expected_keys():
         raise ValueError("scenario rows do not contain the exact 18 frozen combinations")
+    registry = {
+        (entry["regime"], int(entry["training_seed"])): entry
+        for entry in ev.frozen_registry()["entries"]
+    }
     for row in rows:
         if row.get("source_sha") != contract["source_commit_sha"]:
             raise ValueError("row source SHA differs from execution contract")
         if row.get("registry_sha256") != ev.REGISTRY_SHA256:
             raise ValueError("row registry SHA differs from frozen registry")
+        training_seed = row.get("training_seed")
+        if training_seed is None:
+            if row.get("checkpoint_sha256") is not None:
+                raise ValueError("RuleBased row must not reference a checkpoint")
+        else:
+            key = (str(row.get("regime")), int(training_seed))
+            if key not in registry:
+                raise ValueError("AI row references an unregistered policy")
+            if row.get("checkpoint_sha256") != registry[key]["final_checkpoint_sha256"]:
+                raise ValueError("AI row checkpoint provenance mismatch")
         for metric in ev.PRIMARY + ev.SECONDARY:
             value = row.get(metric)
             if value is None:
                 raise ValueError("undefined outcome is retained but cannot enter final panel")
-            if not pd.notna(value):
+            if not pd.notna(value) or not math.isfinite(float(value)):
                 raise ValueError("non-finite evaluation outcome")
 
 
@@ -220,6 +238,19 @@ class EvaluationShardStore:
 
     def _validate_no_ambiguous_files(self, history: list[dict]) -> None:
         referenced = {str(item["file"]) for item in history}
+        if self.root.exists():
+            allowed_root = {"state", "rows", "COMPLETE.json"}
+            unexpected_root = {p.name for p in self.root.iterdir()} - allowed_root
+            if unexpected_root:
+                raise RuntimeError("unexpected shard artifact content; resume is forbidden")
+        if self.state_dir.exists():
+            unexpected_state = {
+                p.name for p in self.state_dir.iterdir()
+                if p.name not in {"contract.json", "latest.json"}
+                and not p.name.endswith(".tmp")
+            }
+            if unexpected_state:
+                raise RuntimeError("unexpected shard state content; resume is forbidden")
         for directory in (self.state_dir, self.root / "rows"):
             if not directory.exists():
                 continue
@@ -250,7 +281,12 @@ class EvaluationShardStore:
             expected_index = self.shard.scenario_indices[position]
             if int(item.get("scenario_index", -1)) != expected_index:
                 raise ValueError("committed shard history must be contiguous")
-            path = self.root / str(item["file"])
+            expected_file = str(self.scenario_path(expected_index).relative_to(self.root))
+            if item.get("file") != expected_file:
+                raise ValueError("committed scenario path differs from frozen layout")
+            if int(item.get("rows", -1)) != COMBINATIONS_PER_SCENARIO:
+                raise ValueError("committed scenario row count mismatch")
+            path = self.root / expected_file
             if not path.exists():
                 raise FileNotFoundError("committed scenario file is missing")
             digest = hashlib.sha256(path.read_bytes()).hexdigest()
@@ -284,8 +320,6 @@ class EvaluationShardStore:
         committed, history = self.load(contract)
         if committed != len(self.shard.scenario_indices):
             raise ValueError("cannot finalize an incomplete evaluation shard")
-        if self.complete_path.exists():
-            raise FileExistsError("shard completion record already exists")
         row_count = sum(int(item["rows"]) for item in history)
         if row_count != len(self.shard.scenario_indices) * COMBINATIONS_PER_SCENARIO:
             raise AssertionError("shard row count mismatch")
@@ -297,6 +331,11 @@ class EvaluationShardStore:
                 json.dumps(history, sort_keys=True, separators=(",", ":")).encode()
             ).hexdigest(),
         }
+        if self.complete_path.exists():
+            existing = _json(self.complete_path)
+            if existing != completion:
+                raise ValueError("existing shard completion record differs from committed evidence")
+            return existing
         _atomic_json(self.complete_path, completion)
         return completion
 
@@ -326,7 +365,10 @@ def run_evaluation_shard(
 ) -> dict:
     # Blocking scientific gate: currently unconditional and intentionally first.
     ev.require_evaluation_freeze()
-    shard = evaluation_shards()[int(shard_id)]
+    shard_id = int(shard_id)
+    if not 0 <= shard_id < SHARD_COUNT:
+        raise ValueError("shard_id must be in the frozen range 0..39")
+    shard = evaluation_shards()[shard_id]
     contract = build_execution_contract(
         shard=shard,
         source_commit_sha=source_commit_sha,
@@ -409,6 +451,13 @@ def collect_evaluation_shards(
         complete = _json(store.complete_path)
         if complete.get("contract") != expected:
             raise ValueError("completion contract mismatch")
+        expected_history_sha = hashlib.sha256(
+            json.dumps(history, sort_keys=True, separators=(",", ":")).encode()
+        ).hexdigest()
+        if complete.get("history_sha256") != expected_history_sha:
+            raise ValueError("completion history digest mismatch")
+        if int(complete.get("rows", -1)) != len(shard.scenario_indices) * COMBINATIONS_PER_SCENARIO:
+            raise ValueError("completion row count mismatch")
         for item in history:
             scenario_index = int(item["scenario_index"])
             if scenario_index in scenario_seen:
@@ -424,8 +473,8 @@ def collect_evaluation_shards(
         na_position="first",
     )
     # Independent final-panel validation uses frozen expectations, not shard claims.
-    for metric in ev.PRIMARY:
-        from .evaluation_analysis import panel_arrays
+    from .evaluation_analysis import panel_arrays
+    for metric in ev.PRIMARY + ev.SECONDARY:
         panel_arrays(frame, metric)
     data = "".join(
         json.dumps(row, sort_keys=True, allow_nan=False) + "\n"

@@ -155,53 +155,11 @@ def _evaluate_one(config, scenario, regime, architecture=None):
 
 
 def run_final_evaluation(archive_dir: Path, output_dir: Path, source_sha: str):
-    require_evaluation_freeze()  # Before checkpoint access, output creation or scenario generation.
-    if len(source_sha) != 40 or any(c not in '0123456789abcdef' for c in source_sha):
-        raise ValueError('source SHA must be a full lowercase git SHA')
-    torch.set_num_threads(1)
-    torch.use_deterministic_algorithms(True)
-    config = SimulationConfig()
-    policies = {}
-    training_ids = set()
-    for regime in INFORMATION_REGIMES:
-        for seed in TRAINING_SEEDS:
-            policy, entry, manifest = load_registered_policy(
-                archive_dir / f'ai-training-{regime}-seed-{seed}.zip', regime, seed)
-            policies[regime, seed] = (policy, entry)
-            training_ids.update(row['scenario_id'] for row in manifest['episodes'])
-    # A failed run leaves a clearly incomplete directory. No implicit resume,
-    # overwrite, or successful completion marker on partial trajectories.
-    output_dir.mkdir(parents=True, exist_ok=False)
-    with (output_dir / 'panel.jsonl').open('x', encoding='utf-8') as f:
-        count = 0
-        for index, seed in enumerate(evaluation_seed_schedule()):
-            scenario = generate_scenario(config, seed)
-            if scenario.scenario_id in training_ids:
-                raise ValueError('held-out scenario overlaps training')
-            for regime in INFORMATION_REGIMES:
-                for training_seed in (None, *TRAINING_SEEDS):
-                    policy, entry = (None, None) if training_seed is None else policies[regime, training_seed]
-                    row = {
-                        'scenario_index': index, 'scenario_id': scenario.scenario_id,
-                        'evaluation_scenario_seed': str(seed), 'regime': regime,
-                        'decision_architecture': 'RuleBased' if policy is None else 'AI',
-                        'training_seed': training_seed,
-                        'checkpoint_sha256': None if entry is None else entry['final_checkpoint_sha256'],
-                        'source_sha': source_sha, 'registry_sha256': REGISTRY_SHA256,
-                        **_evaluate_one(config, scenario, regime, policy),
-                    }
-                    f.write(json.dumps(row, sort_keys=True, allow_nan=False) + '\n')
-                    f.flush()
-                    count += 1
-    if count != 3600:
-        raise AssertionError('evaluation panel must have exactly 3600 trajectories')
-    (output_dir / 'COMPLETE.json').write_text(json.dumps({
-        'trajectories': count, 'source_sha': source_sha,
-        'registry_freeze_commit': REGISTRY_FREEZE_COMMIT,
-        'registry_sha256': REGISTRY_SHA256, 'runtime': runtime_fingerprint(),
-        'panel_sha256': hashlib.sha256((output_dir / 'panel.jsonl').read_bytes()).hexdigest(),
-    }, sort_keys=True), encoding='utf-8')
-
+    # Permanently disabled. Once the authorization gate is opened, the only
+    # admissible held-out path is the audited sharded execution protocol.
+    raise PermissionError(
+        'Monolithic final evaluation is disabled; use the frozen sharded evaluator'
+    )
 
 def run_synthetic_dry_run() -> dict:
     """All 18 policy/regime combinations, using only the existing 8-day fixture."""

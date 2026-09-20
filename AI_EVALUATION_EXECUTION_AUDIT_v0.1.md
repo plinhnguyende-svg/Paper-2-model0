@@ -68,3 +68,29 @@ Before any held-out run:
    resume-artifact provenance.
 4. Only then freeze the evaluator/workflow and separately authorize the first
    3,600-trajectory run.
+
+
+## Deep-audit corrections before freeze
+
+A follow-up audit found two blocking execution defects and several provenance
+hardening gaps. They are corrected before any freeze:
+
+- completed shards are now finalize-idempotent, so a resumed workflow can
+  restore and re-upload already-complete shard evidence without replaying any
+  held-out scenario;
+- the original monolithic `run_final_evaluation()` path is permanently
+  disabled, preventing a second unaudited execution path once the future
+  authorization gate is opened;
+- shard IDs are range-checked instead of relying on Python list indexing;
+- each committed scenario is bound immediately to the fixed evaluation seed
+  schedule and exact registered checkpoint SHA, not only at final collection;
+- restored history paths must equal the frozen `rows/scenario_XXX.jsonl`
+  layout and row counts must be exactly 18;
+- shard artifacts reject unexpected root/state files and ambiguous temporary or
+  orphan outputs;
+- an existing `COMPLETE.json` must exactly match recomputed committed evidence;
+- the collector verifies the completion-history digest, exact row count and all
+  primary plus secondary metric panels.
+
+These changes preserve the scientific design and keep held-out execution closed.
+They only tighten crash recovery, provenance and hidden-path guarantees.
