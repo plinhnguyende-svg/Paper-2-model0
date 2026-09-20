@@ -18,7 +18,7 @@ FROZEN_WORKFLOW_REF = "refs/heads/ai-final-evaluation-v0.1-frozen"
 FROZEN_WORKFLOW_PATH = ".github/workflows/ai_final_evaluation_v0.1.yml"
 FROZEN_EVALUATOR_SHA = "9e42c4a39e6bc8be94d1ed44e993899e4d916481"
 FROZEN_REGISTRY_SHA256 = "0ca89c10fc3135c577aca67f6d2ae573b72281b430218674dad5734ce72c686a"
-FROZEN_WORKFLOW_BLOB_SHA = "3803c7dba74d926200240160b8cd853e43b06d44"
+FROZEN_WORKFLOW_BLOB_SHA = "c5be85429f673b648fe19c11095e1ff2c2bf54e7"
 WORKFLOW_PROTOCOL = "ai-final-evaluation-workflow-v0.1"
 
 
@@ -234,13 +234,11 @@ def _expected_shard_contract(manifest: dict, shard_id: int):
 
 
 def validate_restored_shard(
-    *, manifest_path: Path, shard_dir: Path, shard_id: int
+    *, control_root: Path, manifest_path: Path, shard_dir: Path, shard_id: int
 ) -> dict:
-    manifest = _read_json(Path(manifest_path))
-    env = validate_environment(Path("control"))
-    _validate_static_manifest(manifest, env)
-    if int(manifest.get("current_run_id", -1)) != env["current_run_id"]:
-        raise ValueError("current run manifest mismatch")
+    manifest = validate_current_run(
+        control_root=Path(control_root), manifest_path=Path(manifest_path)
+    )
     if manifest.get("resume_from_run_id") is None:
         raise ValueError("restored shard is allowed only for an explicit resume run")
     ex, shard, expected = _expected_shard_contract(manifest, int(shard_id))
@@ -257,12 +255,12 @@ def validate_restored_shard(
     }
 
 
-def validate_collector_set(*, manifest_path: Path, shard_parent: Path) -> dict:
-    manifest = _read_json(Path(manifest_path))
-    env = validate_environment(Path("control"))
-    _validate_static_manifest(manifest, env)
-    if int(manifest.get("current_run_id", -1)) != env["current_run_id"]:
-        raise ValueError("current run manifest mismatch")
+def validate_collector_set(
+    *, control_root: Path, manifest_path: Path, shard_parent: Path
+) -> dict:
+    manifest = validate_current_run(
+        control_root=Path(control_root), manifest_path=Path(manifest_path)
+    )
 
     from paper2_model0.ai import evaluation_execution as ex
 
@@ -322,11 +320,13 @@ def _parser() -> argparse.ArgumentParser:
     current.add_argument("--manifest", type=Path, required=True)
 
     shard = subs.add_parser("validate-restored-shard")
+    shard.add_argument("--control-root", type=Path, required=True)
     shard.add_argument("--manifest", type=Path, required=True)
     shard.add_argument("--shard-dir", type=Path, required=True)
     shard.add_argument("--shard-id", type=int, required=True)
 
     collector = subs.add_parser("validate-collector-set")
+    collector.add_argument("--control-root", type=Path, required=True)
     collector.add_argument("--manifest", type=Path, required=True)
     collector.add_argument("--shard-parent", type=Path, required=True)
     return parser
@@ -347,13 +347,16 @@ def main(argv: list[str] | None = None) -> int:
         )
     elif args.command == "validate-restored-shard":
         result = validate_restored_shard(
+            control_root=args.control_root,
             manifest_path=args.manifest,
             shard_dir=args.shard_dir,
             shard_id=args.shard_id,
         )
     else:
         result = validate_collector_set(
-            manifest_path=args.manifest, shard_parent=args.shard_parent
+            control_root=args.control_root,
+            manifest_path=args.manifest,
+            shard_parent=args.shard_parent,
         )
     print(json.dumps(result, sort_keys=True, allow_nan=False))
     return 0
