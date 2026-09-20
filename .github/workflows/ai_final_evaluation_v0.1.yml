@@ -50,6 +50,7 @@ jobs:
           test "${GITHUB_REF}" = "refs/heads/ai-final-evaluation-v0.1-frozen"
           test "${GITHUB_WORKFLOW_REF}" = "plinhnguyende-svg/Paper-2-model0/.github/workflows/ai_final_evaluation_v0.1.yml@refs/heads/ai-final-evaluation-v0.1-frozen"
           test "${GITHUB_SHA}" = "${GITHUB_WORKFLOW_SHA}"
+          test "${GITHUB_RUN_ATTEMPT}" = "1"
           if [ -n "${RESUME_RUN_ID_INPUT}" ] && ! [[ "${RESUME_RUN_ID_INPUT}" =~ ^[1-9][0-9]*$ ]]; then
             echo "resume_run_id must be a positive numeric prior workflow run id" >&2
             exit 1
