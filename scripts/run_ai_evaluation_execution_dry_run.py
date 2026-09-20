@@ -22,7 +22,14 @@ def _rows(index: int, source: str) -> list[dict]:
                 "regime": regime,
                 "decision_architecture": "RuleBased" if training_seed is None else "AI",
                 "training_seed": training_seed,
-                "checkpoint_sha256": None if training_seed is None else "c" * 64,
+                "checkpoint_sha256": (
+                    None if training_seed is None else next(
+                        entry["final_checkpoint_sha256"]
+                        for entry in ev.frozen_registry()["entries"]
+                        if entry["regime"] == regime
+                        and entry["training_seed"] == training_seed
+                    )
+                ),
                 "source_sha": source,
                 "registry_sha256": ev.REGISTRY_SHA256,
                 **{metric: float(index + 1) for metric in ev.PRIMARY + ev.SECONDARY},
