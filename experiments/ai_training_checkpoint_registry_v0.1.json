@@ -1,0 +1,299 @@
+{
+  "registry_version": "ai_training_checkpoint_registry_v0.1",
+  "status": "POST_TRAINING_AUDITED_CANDIDATE__LOCKS_ON_MERGE",
+  "workflow_run_id": 35439893662,
+  "workflow_execution_sha": "0b455dd3e03c0597ec806f8aac73db0172f02262",
+  "frozen_launcher_source_sha": "fb4f386703294990917e9d99e10013925a9a54d6",
+  "training_budget": {
+    "episodes_per_seed": 1000,
+    "episode_horizon_days": 1000,
+    "training_seeds": [
+      41001,
+      41002,
+      41003,
+      41004,
+      41005
+    ],
+    "regimes": [
+      "N",
+      "S",
+      "F"
+    ]
+  },
+  "artifact_retention_expires_at": "2026-12-18T11:21:36Z",
+  "stable_run_count": 1,
+  "not_stabilized_run_count": 14,
+  "posthoc_budget_extension_allowed": false,
+  "entries": [
+    {
+      "regime": "F",
+      "training_seed": 41001,
+      "artifact_name": "ai-training-F-seed-41001",
+      "artifact_id": 10586505941,
+      "artifact_digest": "sha256:169b1a9397180a3542a00c3c440a5aea45208c2a04b31cdd4d7acdcde44c020e",
+      "final_checkpoint_file": "checkpoint_episode_1000.pt",
+      "final_checkpoint_sha256": "5c2c748b27050da0d22e101acd84126b884a0fa7ce8bed63ed6c7aeb35a49ec7",
+      "final_manifest_sha256": "cc1e56f5d39a1ae33a4ab6899788987d1f2ec0b4e75e2e60e7745c9e5a21840f",
+      "training_stable": false,
+      "stability_label": "not stabilized under the pre-registered budget",
+      "absolute_relative_mean_change": 0.0944883938306073,
+      "final_window_slope": 0.469395075916555,
+      "final_window_slope_ci95": [
+        0.399576304446398,
+        0.539213847386711
+      ]
+    },
+    {
+      "regime": "F",
+      "training_seed": 41002,
+      "artifact_name": "ai-training-F-seed-41002",
+      "artifact_id": 10586264437,
+      "artifact_digest": "sha256:9b10470007ef3f2c7bdbe1a54907270bd7b5407b5706dcc57a30109dc3733b63",
+      "final_checkpoint_file": "checkpoint_episode_1000.pt",
+      "final_checkpoint_sha256": "17da509fd056885baf77137487170d96fa6ca2769ffd0dcbb96fb61dcb486de2",
+      "final_manifest_sha256": "28bb279c3c6e89b44227c6c978dbec9d7692a4c1727ac92521bd3e89c237348f",
+      "training_stable": false,
+      "stability_label": "not stabilized under the pre-registered budget",
+      "absolute_relative_mean_change": 0.0867355778643429,
+      "final_window_slope": 0.765989035586778,
+      "final_window_slope_ci95": [
+        0.579082510513464,
+        0.952895560660093
+      ]
+    },
+    {
+      "regime": "F",
+      "training_seed": 41003,
+      "artifact_name": "ai-training-F-seed-41003",
+      "artifact_id": 10586157082,
+      "artifact_digest": "sha256:88a7266130bf123de35408f6d803b0e5fc6979aced05fbb29af9d1355d927eee",
+      "final_checkpoint_file": "checkpoint_episode_1000.pt",
+      "final_checkpoint_sha256": "481ce771a73dd93b853125086a204ef1af289479f8e21e623fefc9f2e034a8ae",
+      "final_manifest_sha256": "1dbe0c1ee0d6d70fc62daa1856b7de4b2641be8c73e1619c2c11aa0feec08cb6",
+      "training_stable": false,
+      "stability_label": "not stabilized under the pre-registered budget",
+      "absolute_relative_mean_change": 0.0491262009575249,
+      "final_window_slope": -0.498392108586898,
+      "final_window_slope_ci95": [
+        -0.614628342026298,
+        -0.382155875147498
+      ]
+    },
+    {
+      "regime": "F",
+      "training_seed": 41004,
+      "artifact_name": "ai-training-F-seed-41004",
+      "artifact_id": 10585839373,
+      "artifact_digest": "sha256:84dd98eb24a6019dbb9bb583b6c5748e25adb7033b95695dd1c1f2f51e9b1e9a",
+      "final_checkpoint_file": "checkpoint_episode_1000.pt",
+      "final_checkpoint_sha256": "7153a6a37a52d0d31292adc5ec8f7c6c741303c58fbd1abd1807f48dab593548",
+      "final_manifest_sha256": "5c60cf9ecb116a6a18b54aebff1027d03c6c2258220205d87d6ae27ccf109f7e",
+      "training_stable": false,
+      "stability_label": "not stabilized under the pre-registered budget",
+      "absolute_relative_mean_change": 0.0816071770442265,
+      "final_window_slope": -0.192542272212376,
+      "final_window_slope_ci95": [
+        -0.434030966199515,
+        0.0489464217747644
+      ]
+    },
+    {
+      "regime": "F",
+      "training_seed": 41005,
+      "artifact_name": "ai-training-F-seed-41005",
+      "artifact_id": 10586057454,
+      "artifact_digest": "sha256:9a2fd8ebe5cf11c5ca2fca3d0d209c1b476c9dad56c470ea5edbd40b6d028b69",
+      "final_checkpoint_file": "checkpoint_episode_1000.pt",
+      "final_checkpoint_sha256": "d91435182fa80b2eeb49ca1321026a46f8127b1bf8296db13c4b25135c38f270",
+      "final_manifest_sha256": "f425fe58ce838a07ffcb6bf7c011219abebbd9cbfada8f3a4c8b6cae5f221fbe",
+      "training_stable": false,
+      "stability_label": "not stabilized under the pre-registered budget",
+      "absolute_relative_mean_change": 0.0371418018794271,
+      "final_window_slope": -0.471145054829504,
+      "final_window_slope_ci95": [
+        -0.558488878198086,
+        -0.383801231460922
+      ]
+    },
+    {
+      "regime": "N",
+      "training_seed": 41001,
+      "artifact_name": "ai-training-N-seed-41001",
+      "artifact_id": 10584260786,
+      "artifact_digest": "sha256:4b104085a2c5432170e3b39ed0bb9cf9b700bf618d302e25044de832dbf0abc8",
+      "final_checkpoint_file": "checkpoint_episode_1000.pt",
+      "final_checkpoint_sha256": "ddd791bf9b39d49b30bed904729c68f2e15e98043d073739d4bf959e238854a2",
+      "final_manifest_sha256": "4aef05ee830ade1f4a82d12e242a0d6942c34bb946f032ff60385aeb1582ee9f",
+      "training_stable": false,
+      "stability_label": "not stabilized under the pre-registered budget",
+      "absolute_relative_mean_change": 0.048641896442859,
+      "final_window_slope": 0.244266170194238,
+      "final_window_slope_ci95": [
+        0.176336985428993,
+        0.312195354959484
+      ]
+    },
+    {
+      "regime": "N",
+      "training_seed": 41002,
+      "artifact_name": "ai-training-N-seed-41002",
+      "artifact_id": 10584266840,
+      "artifact_digest": "sha256:ffe5bdd6aa2cf912201fe8baedb5183adbbd6cac34678802a4e312c9ff34486f",
+      "final_checkpoint_file": "checkpoint_episode_1000.pt",
+      "final_checkpoint_sha256": "e41f220bf566912e585b96aeb479e6223b0c255c1ea3951f189d4568eec4d27a",
+      "final_manifest_sha256": "129172fa6e6ceeb4b0d54c55d611511d2e3d376c5f7c10bf2a97ed60cc7f2bc2",
+      "training_stable": false,
+      "stability_label": "not stabilized under the pre-registered budget",
+      "absolute_relative_mean_change": 0.201349562191845,
+      "final_window_slope": -0.0051636313986878,
+      "final_window_slope_ci95": [
+        -0.103118055833849,
+        0.0927907930364736
+      ]
+    },
+    {
+      "regime": "N",
+      "training_seed": 41003,
+      "artifact_name": "ai-training-N-seed-41003",
+      "artifact_id": 10585285149,
+      "artifact_digest": "sha256:c749f783b1e0c2b6367ae068b117d2a2b6aed015ac9f860bb2e959f9d2790257",
+      "final_checkpoint_file": "checkpoint_episode_1000.pt",
+      "final_checkpoint_sha256": "373d102ee0788c9158b82226699f98c516364f6475457c8a9ce273f081c43b5a",
+      "final_manifest_sha256": "d70a39a38da68b0d88e8c94c3042150a5283a28cc5167d285761d751878ffcb0",
+      "training_stable": true,
+      "stability_label": "training-stable",
+      "absolute_relative_mean_change": 0.0192133179337442,
+      "final_window_slope": 0.0290897830660926,
+      "final_window_slope_ci95": [
+        -0.10032273071108,
+        0.158502296843265
+      ]
+    },
+    {
+      "regime": "N",
+      "training_seed": 41004,
+      "artifact_name": "ai-training-N-seed-41004",
+      "artifact_id": 10584280678,
+      "artifact_digest": "sha256:c1e78de93805209c2f288f2c3c20bf7e21ad8618614cac7c922474eeeb00a141",
+      "final_checkpoint_file": "checkpoint_episode_1000.pt",
+      "final_checkpoint_sha256": "ec7c6dbedcc5d3533f9272290309bed0302a3d2b6d4203376c592fe680cd88cb",
+      "final_manifest_sha256": "99ebbbe2d75dbf40806a5296b23cb7e721e20a1ad3ac9bc002b12170af4d371d",
+      "training_stable": false,
+      "stability_label": "not stabilized under the pre-registered budget",
+      "absolute_relative_mean_change": 0.400727489831921,
+      "final_window_slope": -0.86069723471273,
+      "final_window_slope_ci95": [
+        -1.21701370516783,
+        -0.504380764257633
+      ]
+    },
+    {
+      "regime": "N",
+      "training_seed": 41005,
+      "artifact_name": "ai-training-N-seed-41005",
+      "artifact_id": 10584228023,
+      "artifact_digest": "sha256:5323679b0e8732a6cd780f047bdf642962ec192168180656457764bdb74f3e9a",
+      "final_checkpoint_file": "checkpoint_episode_1000.pt",
+      "final_checkpoint_sha256": "0cf04a2c7d135a910bf61eacea0f193968246034439f1a8648522c3d44c83668",
+      "final_manifest_sha256": "5cc17eaae12c85b646f1f3ccffd70636457a4e74225b03a9a3a2a2c605ad8d79",
+      "training_stable": false,
+      "stability_label": "not stabilized under the pre-registered budget",
+      "absolute_relative_mean_change": 0.0443426058848427,
+      "final_window_slope": -0.0871694082140985,
+      "final_window_slope_ci95": [
+        -0.141941219240215,
+        -0.0323975971879817
+      ]
+    },
+    {
+      "regime": "S",
+      "training_seed": 41001,
+      "artifact_name": "ai-training-S-seed-41001",
+      "artifact_id": 10584874269,
+      "artifact_digest": "sha256:6d63ef8ae8ce1ee46cf02b51eb1df193f0f0db102f170a8342579daada89b26a",
+      "final_checkpoint_file": "checkpoint_episode_1000.pt",
+      "final_checkpoint_sha256": "0d74ba311cc564174d868b0255113206ef515f2e6556c640e4089c0a04d9fe9d",
+      "final_manifest_sha256": "92a9477f049539bf5ffd561d51ab639a880e133a84eb036bd363e9ac616e3998",
+      "training_stable": false,
+      "stability_label": "not stabilized under the pre-registered budget",
+      "absolute_relative_mean_change": 0.231472915650694,
+      "final_window_slope": 1.06523434113729,
+      "final_window_slope_ci95": [
+        0.914602985908496,
+        1.21586569636608
+      ]
+    },
+    {
+      "regime": "S",
+      "training_seed": 41002,
+      "artifact_name": "ai-training-S-seed-41002",
+      "artifact_id": 10585064238,
+      "artifact_digest": "sha256:6aa6f58ced95cda6eeccfb85e1bf4e0c17cf2b341b69ca225aca9de679477c49",
+      "final_checkpoint_file": "checkpoint_episode_1000.pt",
+      "final_checkpoint_sha256": "2b3b58cf961cf6d7c419e0eb2b87b1949923c5f250de3e45c04a0e800a44670e",
+      "final_manifest_sha256": "bae8186da7f9eec71758b8347610e8fc225274cb01b04d3bc6b5cc25b862b8ac",
+      "training_stable": false,
+      "stability_label": "not stabilized under the pre-registered budget",
+      "absolute_relative_mean_change": 0.224437521245366,
+      "final_window_slope": 0.329699768551722,
+      "final_window_slope_ci95": [
+        0.25003628753413,
+        0.409363249569315
+      ]
+    },
+    {
+      "regime": "S",
+      "training_seed": 41003,
+      "artifact_name": "ai-training-S-seed-41003",
+      "artifact_id": 10584389535,
+      "artifact_digest": "sha256:a4ff307c4464c9e1456c22a816e042a2f131c8d2302f15a07d37942d756e79c7",
+      "final_checkpoint_file": "checkpoint_episode_1000.pt",
+      "final_checkpoint_sha256": "8e655ccb90e6350f99e8ea44b7708e13801b5509777382c3f9686071cdb72c17",
+      "final_manifest_sha256": "766385c0c0eefd635f70f69893c540b664474e646fe8154b547d18a8844502fd",
+      "training_stable": false,
+      "stability_label": "not stabilized under the pre-registered budget",
+      "absolute_relative_mean_change": 0.0983349856016188,
+      "final_window_slope": 0.347405613433571,
+      "final_window_slope_ci95": [
+        0.24453847835886,
+        0.450272748508282
+      ]
+    },
+    {
+      "regime": "S",
+      "training_seed": 41004,
+      "artifact_name": "ai-training-S-seed-41004",
+      "artifact_id": 10585895552,
+      "artifact_digest": "sha256:352337554e49ca8ddef5c77e162fd986e51c268f7bd63b8fbb057fb588c4462f",
+      "final_checkpoint_file": "checkpoint_episode_1000.pt",
+      "final_checkpoint_sha256": "9b2a6bd6cff5e76ab644f0d9a23b270065060cada382e8ff12c860a99149de06",
+      "final_manifest_sha256": "402988919fc1e4db8bff3d261c602204eb068664a638b29cf5f8e49a60b653a1",
+      "training_stable": false,
+      "stability_label": "not stabilized under the pre-registered budget",
+      "absolute_relative_mean_change": 0.215696485697503,
+      "final_window_slope": -0.0860243501617362,
+      "final_window_slope_ci95": [
+        -0.262031590340154,
+        0.0899828900166819
+      ]
+    },
+    {
+      "regime": "S",
+      "training_seed": 41005,
+      "artifact_name": "ai-training-S-seed-41005",
+      "artifact_id": 10584744791,
+      "artifact_digest": "sha256:30e47f90d8a9720e55e3cdd63f8ac8e9f8b8170325eeecc72bfccb633506c214",
+      "final_checkpoint_file": "checkpoint_episode_1000.pt",
+      "final_checkpoint_sha256": "f0cc130aaed4ce4a5680473e82a53dcdf816047907c4c768703de8c8c8c2cf22",
+      "final_manifest_sha256": "45c1fc3999e66ae6336f256478162146f6bf48cdaf06599295e91b460c642706",
+      "training_stable": false,
+      "stability_label": "not stabilized under the pre-registered budget",
+      "absolute_relative_mean_change": 0.0926073945500042,
+      "final_window_slope": -0.306344890310638,
+      "final_window_slope_ci95": [
+        -0.38327050825751,
+        -0.229419272363766
+      ]
+    }
+  ]
+}
