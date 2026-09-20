@@ -490,10 +490,19 @@ def collect_evaluation_shards(
     from .evaluation_analysis import panel_arrays
     for metric in ev.PRIMARY + ev.SECONDARY:
         panel_arrays(frame, metric)
+    records = frame.to_dict(orient="records")
+    for row in records:
+        training_seed = row.get("training_seed")
+        row["training_seed"] = None if pd.isna(training_seed) else int(training_seed)
+        checkpoint_sha256 = row.get("checkpoint_sha256")
+        if pd.isna(checkpoint_sha256):
+            row["checkpoint_sha256"] = None
     data = "".join(
         json.dumps(row, sort_keys=True, allow_nan=False) + "\n"
-        for row in frame.to_dict(orient="records")
+        for row in records
     ).encode()
+    if output_file.exists():
+        raise FileExistsError("final evaluation panel already exists")
     _atomic_bytes(output_file, data)
     return {
         "rows": len(frame),
