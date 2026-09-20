@@ -58,3 +58,27 @@ def test_r3_generates_separate_primary_and_exploratory_outputs(tmp_path):
     assert "EXPLORATORY" in (out / "table_exploratory_interactions.md").read_text()
     assert "PRIMARY" in (out / "figure_primary_interactions.svg").read_text()
     assert "EXPLORATORY" in (out / "figure_exploratory_interactions.svg").read_text()
+
+
+def test_committed_r3_outputs_are_exact_renderer_outputs(tmp_path):
+    root = Path(__file__).resolve().parents[1]
+    generated = tmp_path / "generated"
+    subprocess.run(
+        [
+            sys.executable,
+            str(SCRIPT),
+            "--primary-registry",
+            str(root / "experiments/ai_final_evaluation_result_registry_v0.1.json"),
+            "--secondary-registry",
+            str(root / "experiments/ai_final_evaluation_secondary_result_registry_v0.1.json"),
+            "--output-dir",
+            str(generated),
+        ],
+        check=True,
+        cwd=root,
+    )
+    committed = root / "outputs" / "manuscript_v0.1"
+    for produced in sorted(generated.iterdir()):
+        expected = committed / produced.name
+        assert expected.is_file(), produced.name
+        assert produced.read_bytes() == expected.read_bytes(), produced.name
