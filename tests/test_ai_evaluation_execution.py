@@ -292,3 +292,34 @@ def test_latent_authorization_requires_exact_frozen_workflow_provenance(monkeypa
     monkeypatch.setenv("GITHUB_SHA", "c" * 40)
     with pytest.raises(PermissionError, match="workflow execution SHA"):
         ev.require_evaluation_freeze()
+
+
+def test_full_synthetic_collector_preserves_null_rulebased_seed(tmp_path):
+    shard_dirs = []
+    for shard in ex.evaluation_shards():
+        root = tmp_path / f"shard-{shard.shard_id:03d}"
+        c = contract(shard)
+        store = ex.EvaluationShardStore(root, shard)
+        store.initialize(c)
+        for index in shard.scenario_indices:
+            store.commit_scenario(rows_for(index, c), c)
+        store.finalize(c)
+        shard_dirs.append(root)
+
+    output = tmp_path / "final" / "panel.jsonl"
+    result = ex.collect_evaluation_shards(
+        shard_dirs,
+        output_file=output,
+        source_commit_sha=SOURCE,
+        workflow_commit_sha=WORKFLOW,
+        origin_run_id=RUN_ID,
+    )
+    rows = [json.loads(line) for line in output.read_text().splitlines()]
+    assert result["rows"] == 3600
+    assert result["scenarios"] == 200
+    assert len(rows) == 3600
+    rulebased = [row for row in rows if row["decision_architecture"] == "RuleBased"]
+    ai_rows = [row for row in rows if row["decision_architecture"] == "AI"]
+    assert len(rulebased) == 600 and all(row["training_seed"] is None for row in rulebased)
+    assert len(ai_rows) == 3000
+    assert {type(row["training_seed"]) for row in ai_rows} == {int}
