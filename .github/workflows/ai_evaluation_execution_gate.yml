@@ -36,6 +36,9 @@ jobs:
           python -m pip install --disable-pip-version-check 'pip==26.2.1'
           python -m pip install -r requirements-ai-training-v0.1.txt -c constraints-ai-training-v0.1.txt
           python -m pip check
+      - name: Install pinned test-only harness without changing scientific pins
+        run: |
+          python -m pip install --no-deps             'pytest==9.1.1'             'iniconfig==2.3.0'             'packaging==26.3'             'pluggy==1.6.0'             'pygments==2.21.0'
       - name: Run execution contract tests
         run: python -m pytest -q tests/test_ai_evaluation_execution.py
       - name: Exercise synthetic interruption and fail-closed recovery
