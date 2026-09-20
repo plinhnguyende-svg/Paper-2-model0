@@ -7,6 +7,9 @@ on:
       - 'src/paper2_model0/ai/evaluation_execution.py'
       - 'tests/test_ai_evaluation_execution.py'
       - 'scripts/run_ai_evaluation_execution_dry_run.py'
+      - 'scripts/run_ai_evaluation_shard.py'
+      - 'scripts/collect_ai_evaluation.py'
+      - 'src/paper2_model0/ai/evaluation.py'
       - '.github/workflows/ai_evaluation_execution_gate.yml'
 
 permissions:
@@ -43,3 +46,7 @@ jobs:
         run: python -m pytest -q tests/test_ai_evaluation_execution.py
       - name: Exercise synthetic interruption and fail-closed recovery
         run: python scripts/run_ai_evaluation_execution_dry_run.py
+      - name: Verify frozen CLI surfaces without opening authorization
+        run: |
+          python scripts/run_ai_evaluation_shard.py --help
+          python scripts/collect_ai_evaluation.py --help
