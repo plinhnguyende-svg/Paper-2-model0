@@ -276,14 +276,23 @@ class EvaluationShardStore:
         committed = int(latest["committed_scenarios"])
         if committed != len(history) or not 0 <= committed <= len(self.shard.scenario_indices):
             raise ValueError("invalid committed scenario count")
-        self._validate_no_ambiguous_files(history)
+        # Validate history structure and the exact frozen relative path before
+        # using history entries to classify on-disk files as referenced. This
+        # prevents a tampered "../..." or alternate path from being masked by
+        # the later orphan-file check.
         for position, item in enumerate(history):
+            if not isinstance(item, dict):
+                raise ValueError("committed shard history entries must be objects")
             expected_index = self.shard.scenario_indices[position]
             if int(item.get("scenario_index", -1)) != expected_index:
                 raise ValueError("committed shard history must be contiguous")
             expected_file = str(self.scenario_path(expected_index).relative_to(self.root))
             if item.get("file") != expected_file:
                 raise ValueError("committed scenario path differs from frozen layout")
+        self._validate_no_ambiguous_files(history)
+        for position, item in enumerate(history):
+            expected_index = self.shard.scenario_indices[position]
+            expected_file = str(self.scenario_path(expected_index).relative_to(self.root))
             if int(item.get("rows", -1)) != COMBINATIONS_PER_SCENARIO:
                 raise ValueError("committed scenario row count mismatch")
             path = self.root / expected_file
