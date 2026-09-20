@@ -147,6 +147,7 @@ def test_loader_rejects_invalid_final_checkpoint(tmp_path, monkeypatch, mutation
 def synthetic_panel():
     entries = {(e['regime'], e['training_seed']): e for e in ev.frozen_registry()['entries']}
     rows = []
+    schedule = ev.evaluation_seed_schedule()
     for i in range(200):
         for r, regime in enumerate(('N', 'S', 'F')):
             for seed in (None, *TRAINING_SEEDS):
@@ -154,7 +155,7 @@ def synthetic_panel():
                 if seed is not None:
                     value += [0, 3, 8][r]
                 rows.append(dict(scenario_index=i, scenario_id=f'synthetic-{i}',
-                    evaluation_scenario_seed=str(900000 + i), regime=regime,
+                    evaluation_scenario_seed=str(schedule[i]), regime=regime,
                     decision_architecture='RuleBased' if seed is None else 'AI',
                     training_seed=seed, source_sha='a' * 40, registry_sha256=ev.REGISTRY_SHA256,
                     checkpoint_sha256=None if seed is None else entries[regime, seed]['final_checkpoint_sha256'],

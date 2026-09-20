@@ -2,7 +2,7 @@
 from __future__ import annotations
 import numpy as np
 import pandas as pd
-from .evaluation import PRIMARY, SECONDARY, REGISTRY_SHA256, frozen_registry
+from .evaluation import PRIMARY, SECONDARY, REGISTRY_SHA256, frozen_registry, evaluation_seed_schedule
 from .training_protocol import INFORMATION_REGIMES, TRAINING_SEEDS
 
 
@@ -25,7 +25,10 @@ def panel_arrays(panel: pd.DataFrame, metric: str):
     ai = np.empty((3, 5, 200))
     expected = {(r, 'RuleBased', None) for r in INFORMATION_REGIMES} | {
         (r, 'AI', s) for r in INFORMATION_REGIMES for s in TRAINING_SEEDS}
+    schedule = evaluation_seed_schedule()
     for index, group in panel.groupby('scenario_index'):
+        if any(str(s) != str(schedule[int(index)]) for s in group.evaluation_scenario_seed):
+            raise ValueError('evaluation seed schedule drift')
         if len(group) != 18 or group.scenario_id.nunique() != 1 or group.evaluation_scenario_seed.nunique() != 1:
             raise ValueError('scenario pairing violated')
         keys = set()
