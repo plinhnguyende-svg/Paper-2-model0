@@ -188,7 +188,7 @@ def test_bootstrap_seed_uncertainty_and_common_scenario_draws():
     assert result['Gamma_V']['ci95'][0] < 2 < result['Gamma_V']['ci95'][1]
 
 
-@pytest.mark.parametrize('case', ['duplicate', 'missing', 'pairing', 'checkpoint', 'source', 'nan'])
+@pytest.mark.parametrize('case', ['duplicate', 'missing', 'pairing', 'checkpoint', 'source', 'nan', 'seed_schedule'])
 def test_panel_rejects_invalid_evidence(case):
     panel = synthetic_panel()
     if case == 'duplicate': panel.iloc[1] = panel.iloc[0]
@@ -197,5 +197,6 @@ def test_panel_rejects_invalid_evidence(case):
     if case == 'checkpoint': panel.loc[1, 'checkpoint_sha256'] = '0' * 64
     if case == 'source': panel.loc[0, 'source_sha'] = 'b' * 40
     if case == 'nan': panel.loc[0, ev.PRIMARY[0]] = np.nan
+    if case == 'seed_schedule': panel.loc[panel.scenario_index == 0, 'evaluation_scenario_seed'] = '123'
     with pytest.raises(ValueError):
         panel_arrays(panel, ev.PRIMARY[0])
