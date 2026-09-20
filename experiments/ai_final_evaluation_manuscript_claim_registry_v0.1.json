@@ -1,0 +1,90 @@
+{
+  "registry_version": "ai-final-evaluation-manuscript-claim-registry-v0.1",
+  "status": "R4_PROSE_TRACEABILITY_ONLY",
+  "frozen_authorities": {
+    "R1": {
+      "ref": "ai-final-evaluation-interpretation-v0.1-frozen",
+      "sha": "ece7fd704e0e3151e3a5ef02bf660a9d5e343c8b",
+      "audit_blob": "caf9e9e0bdf5c48484e71221ca0387949b3c30df"
+    },
+    "R2": {
+      "ref": "ai-final-evaluation-secondary-v0.1-frozen",
+      "sha": "b8806be6fe79c3981b8d82eb781634c31926611d",
+      "audit_blob": "edf25c29c7ef9a19b06c1f9c338597fc1e3fd313"
+    },
+    "R3": {
+      "ref": "ai-final-evaluation-presentation-v0.1-frozen",
+      "sha": "a8e91934867714e81f2fd44b29c229c4d02c615c",
+      "protocol_blob": "51f5380e4c6f63fc82cb2ed6919d04c199db7d95",
+      "primary_table_blob": "1ef38f89cee573d2a3033ea7e502c96f51dd1e03",
+      "exploratory_table_blob": "52c189993f0f91ecd7f8f21f186d6dcad78eb071"
+    }
+  },
+  "claims": {
+    "P1": {
+      "layer": "PRIMARY",
+      "authority": "R1",
+      "claim": "N-to-S target-allocation-gap interaction has frozen Gamma_V -18.367599 with interval [-49.124749, -1.245426]."
+    },
+    "P2": {
+      "layer": "PRIMARY",
+      "authority": "R1",
+      "claim": "S-to-F service-level interaction has frozen Gamma_H 0.150154 with interval [0.004007, 0.361032]."
+    },
+    "P3": {
+      "layer": "PRIMARY",
+      "authority": "R1",
+      "claim": "Other downstream primary interactions have wider intervals and material training-seed heterogeneity; no universal ordering is supported."
+    },
+    "P4": {
+      "layer": "PRIMARY",
+      "authority": "R1",
+      "claim": "Only 1/15 AI training runs met the preregistered stability criterion; all 15 policies remain included under finite-budget wording."
+    },
+    "P5": {
+      "layer": "PRIMARY",
+      "authority": "R1",
+      "claim": "Information architecture and decision architecture interact rather than producing a universal N/S/F or AI/RuleBased ordering."
+    },
+    "E1": {
+      "layer": "EXPLORATORY",
+      "authority": "R2",
+      "claim": "Exploratory stock-allocation-gap Gamma_V is -18.904744 with interval [-49.059334, -2.075621]."
+    },
+    "E2": {
+      "layer": "EXPLORATORY",
+      "authority": "R2",
+      "claim": "Exploratory total-lost-sales Gamma_H is -3604.440665 with interval [-8664.310721, -96.279457]; other listed secondary intervals span zero."
+    },
+    "R3": {
+      "layer": "PRESENTATION",
+      "authority": "R3",
+      "claim": "Manuscript tables and figures are display-formatted copies of frozen registries and do not recompute scientific estimates."
+    },
+    "M1": {
+      "layer": "DISCUSSION",
+      "authority": "R1",
+      "claim": "Managerial implication is conditional: information and decision design should be evaluated jointly; no architecture is universally preferred."
+    },
+    "M2": {
+      "layer": "DISCUSSION",
+      "authority": "R1",
+      "claim": "Direct coordination and downstream operating metrics should be monitored separately."
+    },
+    "M3": {
+      "layer": "DISCUSSION",
+      "authority": "R1",
+      "claim": "Finite-budget training stability is an implementation concern and not a basis for post-hoc seed selection."
+    },
+    "L1": {
+      "layer": "LIMITATION",
+      "authority": "R1",
+      "claim": "Findings are bounded to Model 0, finite-budget learned policies, interval-based descriptive uncertainty, and frozen seed heterogeneity."
+    },
+    "L2": {
+      "layer": "LIMITATION",
+      "authority": "R1",
+      "claim": "Any robustness simulation, alternative training budget, checkpoint selection, or inferential method requires a new scientific gate."
+    }
+  }
+}
