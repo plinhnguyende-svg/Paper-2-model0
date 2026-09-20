@@ -320,7 +320,9 @@ def test_full_synthetic_collector_preserves_null_rulebased_seed(tmp_path):
     assert len(rows) == 3600
     rulebased = [row for row in rows if row["decision_architecture"] == "RuleBased"]
     ai_rows = [row for row in rows if row["decision_architecture"] == "AI"]
-    assert len(rulebased) == 600 and all(row["training_seed"] is None for row in rulebased)
+    assert len(rulebased) == 600
+    assert all(row["training_seed"] is None for row in rulebased)
+    assert all(row["checkpoint_sha256"] is None for row in rulebased)
     assert len(ai_rows) == 3000
     assert {type(row["training_seed"]) for row in ai_rows} == {int}
 
