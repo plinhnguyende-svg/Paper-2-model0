@@ -238,7 +238,7 @@ jobs:
         run: |
           python control/scripts/ai_evaluation_workflow_guard.py validate-current-run             --control-root control             --manifest current/run-contract/run_contract.json
           if [ -n "${RESUME_RUN_ID_INPUT}" ]; then
-            python control/scripts/ai_evaluation_workflow_guard.py validate-restored-shard               --manifest current/run-contract/run_contract.json               --shard-dir "outputs/shards/${{ matrix.shard_name }}"               --shard-id "${{ matrix.shard_id }}"
+            python control/scripts/ai_evaluation_workflow_guard.py validate-restored-shard               --control-root control               --manifest current/run-contract/run_contract.json               --shard-dir "outputs/shards/${{ matrix.shard_name }}"               --shard-id "${{ matrix.shard_id }}"
           else
             test ! -e "outputs/shards/${{ matrix.shard_name }}"
           fi
@@ -312,7 +312,7 @@ jobs:
       - name: Validate exact collector input set
         run: |
           python control/scripts/ai_evaluation_workflow_guard.py validate-current-run             --control-root control             --manifest current/run-contract/run_contract.json
-          python control/scripts/ai_evaluation_workflow_guard.py validate-collector-set             --manifest current/run-contract/run_contract.json             --shard-parent outputs/shards
+          python control/scripts/ai_evaluation_workflow_guard.py validate-collector-set             --control-root control             --manifest current/run-contract/run_contract.json             --shard-parent outputs/shards
 
       - name: Collect frozen final panel
         env:
