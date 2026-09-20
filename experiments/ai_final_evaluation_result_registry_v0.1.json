@@ -1,0 +1,515 @@
+{
+  "registry_version": "ai-final-evaluation-result-registry-v0.1",
+  "status": "RESULTS_FREEZE_CANDIDATE_NO_MANUSCRIPT_INTERPRETATION",
+  "scientific_run": {
+    "run_id": 35531760845,
+    "run_number": 1,
+    "run_attempt": 1,
+    "event": "workflow_dispatch",
+    "conclusion": "success",
+    "workflow_ref": "refs/heads/ai-final-evaluation-v0.1-frozen",
+    "workflow_execution_sha": "d121c59cf860584a3df51b48ec8f8fae53ffef6c",
+    "workflow_blob_sha": "c5be85429f673b648fe19c11095e1ff2c2bf54e7",
+    "evaluator_sha": "9e42c4a39e6bc8be94d1ed44e993899e4d916481",
+    "completed_at": "2026-09-20T19:53:03Z"
+  },
+  "training_registry_sha256": "0ca89c10fc3135c577aca67f6d2ae573b72281b430218674dad5734ce72c686a",
+  "frozen_analysis": {
+    "source_path": "src/paper2_model0/ai/evaluation_analysis.py",
+    "source_blob_sha": "d85cc1b9f673d0ecd801f9eb12142e9e861aecc2",
+    "plan_path": "AI_FINAL_EVALUATION_PLAN_v0.1.md",
+    "plan_blob_sha": "99327e2892d268d9f3528bca548d403ba893a854",
+    "bootstrap_draws": 10000,
+    "bootstrap_seed": 62001,
+    "interval": "percentile 95%",
+    "p_values": false,
+    "significance_claims": false
+  },
+  "artifacts": {
+    "run_contract": {
+      "artifact_id": 10611696167,
+      "digest": "sha256:1647ae9eaacbef0ee7c062e78b916a54781117c91c2e68773b22dfbefa9472ba",
+      "size_in_bytes": 537
+    },
+    "checkpoint_bundle": {
+      "artifact_id": 10611247770,
+      "digest": "sha256:e848e2a70f4b0720f85f9cf6f73114c1abe9588ad15957b4eeb3daa77a10e607",
+      "size_in_bytes": 25233173
+    },
+    "final_panel": {
+      "artifact_id": 10611323765,
+      "digest": "sha256:3ad57268f6c0be6629edf65d4d6cc4239b50094fc7ca0709509face72edc736c",
+      "size_in_bytes": 366275,
+      "panel_jsonl_sha256": "6ed8bbd779bf25f6f7370ee2e27439ce18915be98a9169d10dd1f08f6cf8c00c"
+    },
+    "shards": [
+      {
+        "name": "shard-000",
+        "artifact_id": 10612005457,
+        "digest": "sha256:2e160ad1d0083f0ddbc891ba853b3ad83fbf495c223c79d5c088d7fe564a72c6",
+        "size_in_bytes": 16575,
+        "expired": false
+      },
+      {
+        "name": "shard-001",
+        "artifact_id": 10612130427,
+        "digest": "sha256:85d8bc339fa21b9e19692e04647ff2e75c986bdcb90cbfc435cf46f8209f22e5",
+        "size_in_bytes": 16498,
+        "expired": false
+      },
+      {
+        "name": "shard-002",
+        "artifact_id": 10612225247,
+        "digest": "sha256:5071bba4101ea34cd8bb7b16702d04341387dec1c85dc71bb9946a56c7d95942",
+        "size_in_bytes": 16535,
+        "expired": false
+      },
+      {
+        "name": "shard-003",
+        "artifact_id": 10611292563,
+        "digest": "sha256:41c23577a71100588aec051ac0dc0c9a64135955e753b5eb46b7dc8fc2804c5d",
+        "size_in_bytes": 16601,
+        "expired": false
+      },
+      {
+        "name": "shard-004",
+        "artifact_id": 10612050509,
+        "digest": "sha256:b106b1921013efc61909bb17a8acb0514095ca241fef74a97c97e617fd9d4509",
+        "size_in_bytes": 16603,
+        "expired": false
+      },
+      {
+        "name": "shard-005",
+        "artifact_id": 10611901143,
+        "digest": "sha256:7e8cb08abbecd84c97afbe08d9ba007b49d6ca63fd3e74235a74ac2eeb312ea1",
+        "size_in_bytes": 16599,
+        "expired": false
+      },
+      {
+        "name": "shard-006",
+        "artifact_id": 10611896252,
+        "digest": "sha256:7e0ae7bc33c68ca4cb35baf84cf5304b5b44a1cbd785e7577196712cf53395f8",
+        "size_in_bytes": 16540,
+        "expired": false
+      },
+      {
+        "name": "shard-007",
+        "artifact_id": 10611382246,
+        "digest": "sha256:4f0ca87a29a66eee0242ce9f4ff000ae3c3217026bc07cc518c349bc9d5a0986",
+        "size_in_bytes": 16654,
+        "expired": false
+      },
+      {
+        "name": "shard-008",
+        "artifact_id": 10612320319,
+        "digest": "sha256:8392dd19ca56b54236933c18945e4e99179e9c73759b35777c91eddc14fb8d76",
+        "size_in_bytes": 16630,
+        "expired": false
+      },
+      {
+        "name": "shard-009",
+        "artifact_id": 10611274535,
+        "digest": "sha256:4c357054e663e6feee11e2d60aa69db405f90e96f2372a591a8d94615f96c802",
+        "size_in_bytes": 16507,
+        "expired": false
+      },
+      {
+        "name": "shard-010",
+        "artifact_id": 10611816121,
+        "digest": "sha256:ae5e72dfbd8d8d5287d327e0fd50f51ded4cd965f24f1a898671c62be6aa0e00",
+        "size_in_bytes": 16518,
+        "expired": false
+      },
+      {
+        "name": "shard-011",
+        "artifact_id": 10611492115,
+        "digest": "sha256:2584ba161538787a4b785c3aa81a6821eb8b9f371707cc4c41475957d7e1d3cb",
+        "size_in_bytes": 16577,
+        "expired": false
+      },
+      {
+        "name": "shard-012",
+        "artifact_id": 10611299339,
+        "digest": "sha256:e2f2e5c5aa7cbebab048519161dcf1f6fcb816c155a1eb285ad3e633b986e303",
+        "size_in_bytes": 16568,
+        "expired": false
+      },
+      {
+        "name": "shard-013",
+        "artifact_id": 10611631888,
+        "digest": "sha256:93bed8102222943ba9a86e551c6a5898d7f7bc2452f9dd64ecc72305b8be520c",
+        "size_in_bytes": 16559,
+        "expired": false
+      },
+      {
+        "name": "shard-014",
+        "artifact_id": 10611357555,
+        "digest": "sha256:a20eb3826dc9eb28834b65aee7c25ea91ec91b945136ee95a01c7a6a44f658c4",
+        "size_in_bytes": 16539,
+        "expired": false
+      },
+      {
+        "name": "shard-015",
+        "artifact_id": 10612375765,
+        "digest": "sha256:79d35fdbea2eb64fb44931d52be2c6a6932413b1c2a59278b38fd26bd5e5bbfe",
+        "size_in_bytes": 16585,
+        "expired": false
+      },
+      {
+        "name": "shard-016",
+        "artifact_id": 10612250969,
+        "digest": "sha256:dfd2ba71646b45d225c884539921067fcf02dabbe8a4a217d0ba3dae5e3c1e09",
+        "size_in_bytes": 16488,
+        "expired": false
+      },
+      {
+        "name": "shard-017",
+        "artifact_id": 10611827200,
+        "digest": "sha256:f1a4fa9227dad70a5f7ba21656d857a3041deb29b5f777099c08926932e135a5",
+        "size_in_bytes": 16522,
+        "expired": false
+      },
+      {
+        "name": "shard-018",
+        "artifact_id": 10611741722,
+        "digest": "sha256:5b8ac87fa8dfb55d7ad9b38c3da08aa3963253aeddf7f926071f009dcf772486",
+        "size_in_bytes": 16568,
+        "expired": false
+      },
+      {
+        "name": "shard-019",
+        "artifact_id": 10612370843,
+        "digest": "sha256:efbb8f94159da2a739a518c1a6f8bf860a2a3a5d24504fb9aaff377b7856d490",
+        "size_in_bytes": 16578,
+        "expired": false
+      },
+      {
+        "name": "shard-020",
+        "artifact_id": 10612470356,
+        "digest": "sha256:de0031163988af5a9c9362c788ace6cc7ebe5d083648983586eede68f4a5495d",
+        "size_in_bytes": 16569,
+        "expired": false
+      },
+      {
+        "name": "shard-021",
+        "artifact_id": 10611882040,
+        "digest": "sha256:902b452e61792a71c8873788c177a6e63eb833213128752cec2d5cef312ab031",
+        "size_in_bytes": 16591,
+        "expired": false
+      },
+      {
+        "name": "shard-022",
+        "artifact_id": 10612395791,
+        "digest": "sha256:cff2a3d247906811bcd2f819b3d36ca5e0b70b46b6f40270c1f3e4be81806ce4",
+        "size_in_bytes": 16582,
+        "expired": false
+      },
+      {
+        "name": "shard-023",
+        "artifact_id": 10611562622,
+        "digest": "sha256:9e2ff4766d7f6b260516eb68af41a20c4a4a733a83bfd1754e8b58f69fda66e4",
+        "size_in_bytes": 16544,
+        "expired": false
+      },
+      {
+        "name": "shard-024",
+        "artifact_id": 10611427738,
+        "digest": "sha256:1062d99c9b6f509acd8500f8f1dba2c430a13e136d891f6412f8a80593089b75",
+        "size_in_bytes": 16515,
+        "expired": false
+      },
+      {
+        "name": "shard-025",
+        "artifact_id": 10611797828,
+        "digest": "sha256:13dba07bbbbd578e459610b26244497786ec99f583407dbef901dbf9c860a1d5",
+        "size_in_bytes": 16503,
+        "expired": false
+      },
+      {
+        "name": "shard-026",
+        "artifact_id": 10612191731,
+        "digest": "sha256:19db96665d920698fe47f602ec7d77da87f7e81a8318da0cd4bcf81e4a7bca76",
+        "size_in_bytes": 16665,
+        "expired": false
+      },
+      {
+        "name": "shard-027",
+        "artifact_id": 10612091851,
+        "digest": "sha256:3530ddd65c216239b0cb44826804627b887dd1235c038f36785457f5d8dd0b41",
+        "size_in_bytes": 16538,
+        "expired": false
+      },
+      {
+        "name": "shard-028",
+        "artifact_id": 10612191851,
+        "digest": "sha256:7ff8140536d45e32c201c0210f6280226e9034f3fb26048dda6aefdd4474e51c",
+        "size_in_bytes": 16621,
+        "expired": false
+      },
+      {
+        "name": "shard-029",
+        "artifact_id": 10611742271,
+        "digest": "sha256:982a8c3cbf7c5f2e9409b056ffabf6cf5662d8566cf62bc28fa6dbbca19a4098",
+        "size_in_bytes": 16563,
+        "expired": false
+      },
+      {
+        "name": "shard-030",
+        "artifact_id": 10612465945,
+        "digest": "sha256:62eebeca67f91868222b9c9414cd71b3634f7c98b366319a856348e67e6a6b33",
+        "size_in_bytes": 16619,
+        "expired": false
+      },
+      {
+        "name": "shard-031",
+        "artifact_id": 10611532795,
+        "digest": "sha256:bd1e40e9830adf0a5de742e1bc636d26b6f84b9b0f38cbce95e795355acd0cac",
+        "size_in_bytes": 16645,
+        "expired": false
+      },
+      {
+        "name": "shard-032",
+        "artifact_id": 10611962432,
+        "digest": "sha256:37ec075d7cc00ba168491f754293a2024eb489c427a5cb58402c8672521203e4",
+        "size_in_bytes": 16504,
+        "expired": false
+      },
+      {
+        "name": "shard-033",
+        "artifact_id": 10611313437,
+        "digest": "sha256:6fd58a74a058d0135978ad228d6b695969950ef1fba9dd7b3eaa5b2bdddf47db",
+        "size_in_bytes": 16533,
+        "expired": false
+      },
+      {
+        "name": "shard-034",
+        "artifact_id": 10612376756,
+        "digest": "sha256:712b913b3ec3861b2cf6a6393c6b012b6278ba1df42ecb454f1c8bb5541d22b5",
+        "size_in_bytes": 16585,
+        "expired": false
+      },
+      {
+        "name": "shard-035",
+        "artifact_id": 10612087442,
+        "digest": "sha256:a91a91787eea10a3f8058e061709b962dab24992f0787dfcb6f86df32cd3c720",
+        "size_in_bytes": 16538,
+        "expired": false
+      },
+      {
+        "name": "shard-036",
+        "artifact_id": 10612102327,
+        "digest": "sha256:3735d23c8b5ec70db2ed923bbd9d1522a7756552d702a017e54c5cba33b798f8",
+        "size_in_bytes": 16545,
+        "expired": false
+      },
+      {
+        "name": "shard-037",
+        "artifact_id": 10611992549,
+        "digest": "sha256:a638dbdf52c548780541b8d1bf035bd93ac9df31f607f0763f854b53c0d67725",
+        "size_in_bytes": 16539,
+        "expired": false
+      },
+      {
+        "name": "shard-038",
+        "artifact_id": 10612242218,
+        "digest": "sha256:6a48ad1cc36f818284baa5077269f3f99b91bdd0049944b8d9f53f77cd50ca50",
+        "size_in_bytes": 16574,
+        "expired": false
+      },
+      {
+        "name": "shard-039",
+        "artifact_id": 10612037610,
+        "digest": "sha256:57c8460759d8c5754cea55226ae7ea1dfde06f2ca098d7d8a713f606cbf786ec",
+        "size_in_bytes": 16564,
+        "expired": false
+      }
+    ]
+  },
+  "panel_audit": {
+    "row_count": 3600,
+    "scenario_count": 200,
+    "treatment_combinations_per_scenario": 18,
+    "rule_based_rows": 600,
+    "ai_rows": 3000,
+    "regimes": {
+      "N": 1200,
+      "S": 1200,
+      "F": 1200
+    },
+    "ai_training_seeds": [
+      41001,
+      41002,
+      41003,
+      41004,
+      41005
+    ],
+    "distinct_ai_checkpoints": 15,
+    "duplicate_treatment_rows": 0,
+    "nonfinite_metric_values": 0,
+    "source_sha_all_rows": "9e42c4a39e6bc8be94d1ed44e993899e4d916481",
+    "registry_sha256_all_rows": "0ca89c10fc3135c577aca67f6d2ae573b72281b430218674dad5734ce72c686a",
+    "collector_exact_input_set_validation": "success"
+  },
+  "primary_results": {
+    "service_level": {
+      "Gamma_V": {
+        "mean": -0.13646550977179975,
+        "ci95": [
+          -0.28387302392216673,
+          0.007512475275225549
+        ],
+        "between_seed_sd": 0.1907688204573751,
+        "seed_means": [
+          -0.02784162902250935,
+          -0.3237602834983957,
+          -0.0006775392975861866,
+          -0.36329524978768474,
+          0.03324715274717715
+        ]
+      },
+      "Gamma_H": {
+        "mean": 0.150153689533652,
+        "ci95": [
+          0.004006833509232785,
+          0.36103190044673933
+        ],
+        "between_seed_sd": 0.23965030430270415,
+        "seed_means": [
+          0.08745504122659552,
+          0.561123484041138,
+          0.0074737209317813,
+          0.1351372022308154,
+          -0.04042100076207044
+        ]
+      }
+    },
+    "waste_share_of_terminal_outflow": {
+      "Gamma_V": {
+        "mean": 0.05110235621542732,
+        "ci95": [
+          -0.07691613437966123,
+          0.24305991865798487
+        ],
+        "between_seed_sd": 0.21338492060860056,
+        "seed_means": [
+          -0.03730411595202269,
+          0.4212810220186759,
+          -0.011221309575938228,
+          -0.12689152368406525,
+          0.009647708270486905
+        ]
+      },
+      "Gamma_H": {
+        "mean": -0.02126249677894225,
+        "ci95": [
+          -0.22733177336674845,
+          0.11223704068285538
+        ],
+        "between_seed_sd": 0.2321015427760256,
+        "seed_means": [
+          0.06448797949427788,
+          -0.42568434091459834,
+          0.16088119369472892,
+          0.07923568008859155,
+          0.014767003742288794
+        ]
+      }
+    },
+    "importer_procurement_bullwhip": {
+      "Gamma_V": {
+        "mean": 3.8065851803817403,
+        "ci95": [
+          -22.40263155477657,
+          43.84476421237611
+        ],
+        "between_seed_sd": 45.014805576088094,
+        "seed_means": [
+          -4.916249584608184,
+          81.95670596763557,
+          -30.266066378003963,
+          -5.628129745368471,
+          -22.11333435774626
+        ]
+      },
+      "Gamma_H": {
+        "mean": 80.50185574584079,
+        "ci95": [
+          -11.242796220308069,
+          160.21066707441804
+        ],
+        "between_seed_sd": 110.16924104854749,
+        "seed_means": [
+          218.96653189236488,
+          -75.7744097477238,
+          113.07066979079413,
+          29.622131300824847,
+          116.62435549294392
+        ]
+      }
+    },
+    "mean_total_inventory": {
+      "Gamma_V": {
+        "mean": -11.949749571936788,
+        "ci95": [
+          -46.769035630968865,
+          13.617622400567878
+        ],
+        "between_seed_sd": 39.29429985618974,
+        "seed_means": [
+          -13.592227958044663,
+          25.504228208449877,
+          -4.729603290325915,
+          -77.01254728078722,
+          10.081402461023975
+        ]
+      },
+      "Gamma_H": {
+        "mean": 11.416718939818457,
+        "ci95": [
+          -8.553009831902147,
+          30.07628213118821
+        ],
+        "between_seed_sd": 25.072474901646995,
+        "seed_means": [
+          33.457363334684786,
+          -21.83172444384958,
+          28.983289582607295,
+          25.477774020398535,
+          -9.003107794748747
+        ]
+      }
+    },
+    "mean_abs_target_allocation_gap_exporter_average": {
+      "Gamma_V": {
+        "mean": -18.3675993518373,
+        "ci95": [
+          -49.124748947832856,
+          -1.2454257019198118
+        ],
+        "between_seed_sd": 34.43048857123696,
+        "seed_means": [
+          -5.808123143121254,
+          -79.75476463930427,
+          -0.7443306441524905,
+          0.2572043440652413,
+          -5.787982676673717
+        ]
+      },
+      "Gamma_H": {
+        "mean": -0.21882443785137548,
+        "ci95": [
+          -24.078203570292906,
+          36.036946255484594
+        ],
+        "between_seed_sd": 40.75840212606923,
+        "seed_means": [
+          -13.563429865501464,
+          70.77559784612113,
+          -27.33381074571007,
+          -26.09973266303292,
+          -4.872746761133561
+        ]
+      }
+    }
+  }
+}
