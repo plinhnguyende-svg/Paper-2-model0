@@ -323,3 +323,14 @@ def test_full_synthetic_collector_preserves_null_rulebased_seed(tmp_path):
     assert len(rulebased) == 600 and all(row["training_seed"] is None for row in rulebased)
     assert len(ai_rows) == 3000
     assert {type(row["training_seed"]) for row in ai_rows} == {int}
+
+    # The final collector output is immutable once written. A repeated collect
+    # must fail closed rather than overwrite or silently regenerate the panel.
+    with pytest.raises(FileExistsError, match="final evaluation panel already exists"):
+        ex.collect_evaluation_shards(
+            shard_dirs,
+            output_file=output,
+            source_commit_sha=SOURCE,
+            workflow_commit_sha=WORKFLOW,
+            origin_run_id=RUN_ID,
+        )
