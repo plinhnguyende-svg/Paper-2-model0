@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="670" viewBox="0 0 1100 670">
+<style>text{font-family:Arial,sans-serif;font-size:14px;fill:currentColor}.title{font-size:20px;font-weight:700}.label{font-weight:700}.axis{stroke:currentColor;stroke-width:1}.ci{stroke:currentColor;stroke-width:3}.zero{stroke:currentColor;stroke-width:1;stroke-dasharray:5 5}.point{fill:currentColor}</style>
+<text x="20" y="32" class="title">EXPLORATORY interaction estimates — frozen 95% intervals</text>
+<text x="20" y="54">EXPLORATORY — presentation only; each outcome has its own scale.</text>
+<text x="20" y="96" class="label">Retail-order bullwhip</text>
+<line x1="320.00" y1="192" x2="1040.00" y2="192" class="axis"/>
+<line x1="639.91" y1="108" x2="639.91" y2="192" class="zero"/>
+<text x="250" y="130" text-anchor="end">Gamma_V</text>
+<text x="250" y="167" text-anchor="end">Gamma_H</text>
+<text x="320.00" y="212" text-anchor="start">-43.238524</text>
+<text x="1040.00" y="212" text-anchor="end">54.074348</text>
+<line x1="431.45" y1="125" x2="990.34" y2="125" class="ci"/>
+<circle cx="708.78" cy="125" r="5" class="point"/>
+<line x1="369.66" y1="162" x2="977.82" y2="162" class="ci"/>
+<circle cx="714.51" cy="162" r="5" class="point"/>
+<text x="20" y="246" class="label">Total lost sales</text>
+<line x1="320.00" y1="342" x2="1040.00" y2="342" class="axis"/>
+<line x1="717.10" y1="258" x2="717.10" y2="342" class="zero"/>
+<text x="250" y="280" text-anchor="end">Gamma_V</text>
+<text x="250" y="317" text-anchor="end">Gamma_H</text>
+<text x="320.00" y="362" text-anchor="start">-9902.564318</text>
+<text x="1040.00" y="362" text-anchor="end">8052.112838</text>
+<line x1="709.87" y1="275" x2="990.34" y2="275" class="ci"/>
+<circle cx="848.47" cy="275" r="5" class="point"/>
+<line x1="369.66" y1="312" x2="713.24" y2="312" class="ci"/>
+<circle cx="572.56" cy="312" r="5" class="point"/>
+<text x="20" y="396" class="label">Total waste</text>
+<line x1="320.00" y1="492" x2="1040.00" y2="492" class="axis"/>
+<line x1="605.71" y1="408" x2="605.71" y2="492" class="zero"/>
+<text x="250" y="430" text-anchor="end">Gamma_V</text>
+<text x="250" y="467" text-anchor="end">Gamma_H</text>
+<text x="320.00" y="512" text-anchor="start">-2449.762644</text>
+<text x="1040.00" y="512" text-anchor="end">3723.645954</text>
+<line x1="369.66" y1="425" x2="859.17" y2="425" class="ci"/>
+<circle cx="598.57" cy="425" r="5" class="point"/>
+<line x1="386.97" y1="462" x2="990.34" y2="462" class="ci"/>
+<circle cx="706.68" cy="462" r="5" class="point"/>
+<text x="20" y="546" class="label">Stock-allocation gap</text>
+<line x1="320.00" y1="642" x2="1040.00" y2="642" class="axis"/>
+<line x1="727.27" y1="558" x2="727.27" y2="642" class="zero"/>
+<text x="250" y="580" text-anchor="end">Gamma_V</text>
+<text x="250" y="617" text-anchor="end">Gamma_H</text>
+<text x="320.00" y="662" text-anchor="start">-55.871353</text>
+<text x="1040.00" y="662" text-anchor="end">42.902917</text>
+<line x1="369.66" y1="575" x2="712.14" y2="575" class="ci"/>
+<circle cx="589.46" cy="575" r="5" class="point"/>
+<line x1="560.34" y1="612" x2="990.34" y2="612" class="ci"/>
+<circle cx="731.01" cy="612" r="5" class="point"/>
+</svg>
