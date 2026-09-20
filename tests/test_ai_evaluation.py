@@ -26,7 +26,7 @@ def test_candidate_cannot_touch_heldout_or_create_output(tmp_path, monkeypatch):
         pytest.fail('held-out execution touched a protected resource')
     monkeypatch.setattr(ev, 'generate_scenario', forbidden)
     monkeypatch.setattr(ev, 'load_registered_policy', forbidden)
-    with pytest.raises(PermissionError, match='not frozen'):
+    with pytest.raises(PermissionError, match='Monolithic'):
         ev.run_final_evaluation(tmp_path, tmp_path / 'output', 'a' * 40)
     assert not (tmp_path / 'output').exists()
 
