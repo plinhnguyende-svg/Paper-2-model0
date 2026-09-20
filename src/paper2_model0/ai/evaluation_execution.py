@@ -492,11 +492,11 @@ def collect_evaluation_shards(
         panel_arrays(frame, metric)
     records = frame.to_dict(orient="records")
     for row in records:
-        for key, value in tuple(row.items()):
-            if pd.isna(value):
-                row[key] = None
-        if row.get("training_seed") is not None:
-            row["training_seed"] = int(row["training_seed"])
+        training_seed = row.get("training_seed")
+        row["training_seed"] = None if pd.isna(training_seed) else int(training_seed)
+        checkpoint_sha256 = row.get("checkpoint_sha256")
+        if pd.isna(checkpoint_sha256):
+            row["checkpoint_sha256"] = None
     data = "".join(
         json.dumps(row, sort_keys=True, allow_nan=False) + "\n"
         for row in records
