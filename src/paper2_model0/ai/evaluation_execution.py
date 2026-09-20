@@ -372,8 +372,13 @@ def run_evaluation_shard(
     origin_run_id: int,
     resume: bool,
 ) -> dict:
-    # Blocking scientific gate: currently unconditional and intentionally first.
-    ev.require_evaluation_freeze()
+    # Blocking scientific gate is intentionally first: no checkpoint access,
+    # output creation, or scenario generation may occur before exact provenance.
+    authorization = ev.require_evaluation_freeze()
+    if source_commit_sha != authorization["evaluator_sha"]:
+        raise PermissionError("source_commit_sha differs from frozen evaluator authorization")
+    if workflow_commit_sha != authorization["workflow_sha"]:
+        raise PermissionError("workflow_commit_sha differs from frozen workflow authorization")
     shard_id = int(shard_id)
     if not 0 <= shard_id < SHARD_COUNT:
         raise ValueError("shard_id must be in the frozen range 0..39")
