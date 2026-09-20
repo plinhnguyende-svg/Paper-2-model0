@@ -1,0 +1,11 @@
+layer,outcome_key,outcome_label,estimand,mean,ci_low,ci_high,between_seed_sd,seed_41001,seed_41002,seed_41003,seed_41004,seed_41005
+PRIMARY,service_level,Service level,Gamma_V,-0.136466,-0.283873,0.007512,0.190769,-0.027842,-0.323760,-0.000678,-0.363295,0.033247
+PRIMARY,service_level,Service level,Gamma_H,0.150154,0.004007,0.361032,0.239650,0.087455,0.561123,0.007474,0.135137,-0.040421
+PRIMARY,waste_share_of_terminal_outflow,Waste share of terminal outflow,Gamma_V,0.051102,-0.076916,0.243060,0.213385,-0.037304,0.421281,-0.011221,-0.126892,0.009648
+PRIMARY,waste_share_of_terminal_outflow,Waste share of terminal outflow,Gamma_H,-0.021262,-0.227332,0.112237,0.232102,0.064488,-0.425684,0.160881,0.079236,0.014767
+PRIMARY,importer_procurement_bullwhip,Importer procurement bullwhip,Gamma_V,3.806585,-22.402632,43.844764,45.014806,-4.916250,81.956706,-30.266066,-5.628130,-22.113334
+PRIMARY,importer_procurement_bullwhip,Importer procurement bullwhip,Gamma_H,80.501856,-11.242796,160.210667,110.169241,218.966532,-75.774410,113.070670,29.622131,116.624355
+PRIMARY,mean_total_inventory,Mean total inventory,Gamma_V,-11.949750,-46.769036,13.617622,39.294300,-13.592228,25.504228,-4.729603,-77.012547,10.081402
+PRIMARY,mean_total_inventory,Mean total inventory,Gamma_H,11.416719,-8.553010,30.076282,25.072475,33.457363,-21.831724,28.983290,25.477774,-9.003108
+PRIMARY,mean_abs_target_allocation_gap_exporter_average,Target-allocation gap,Gamma_V,-18.367599,-49.124749,-1.245426,34.430489,-5.808123,-79.754765,-0.744331,0.257204,-5.787983
+PRIMARY,mean_abs_target_allocation_gap_exporter_average,Target-allocation gap,Gamma_H,-0.218824,-24.078204,36.036946,40.758402,-13.563430,70.775598,-27.333811,-26.099733,-4.872747
