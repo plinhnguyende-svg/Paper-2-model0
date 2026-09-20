@@ -4,7 +4,9 @@ from __future__ import annotations
 import hashlib
 import io
 import json
+import os
 from pathlib import Path
+import subprocess
 import zipfile
 
 import numpy as np
@@ -38,11 +40,66 @@ SECONDARY = (
 )
 
 
-def require_evaluation_freeze() -> None:
-    # Intentionally unconditional. A separately reviewed freeze/launch PR must
-    # replace this with exact-source/runtime/authorization checks. No CLI flag,
-    # environment variable or user-supplied SHA can open this candidate runner.
-    raise PermissionError('Final evaluation runner is not frozen; held-out execution is closed')
+FROZEN_EVALUATION_REPOSITORY = 'plinhnguyende-svg/Paper-2-model0'
+FROZEN_EVALUATION_REF = 'refs/heads/ai-final-evaluation-v0.1-frozen'
+FROZEN_EVALUATION_WORKFLOW_PATH = '.github/workflows/ai_final_evaluation_v0.1.yml'
+
+
+def _full_git_sha(value: str, label: str) -> str:
+    value = str(value).strip().lower()
+    if len(value) != 40 or any(c not in '0123456789abcdef' for c in value):
+        raise PermissionError(f'{label} must be an exact 40-character git SHA')
+    return value
+
+
+def require_evaluation_freeze() -> dict:
+    """Fail closed unless a later frozen workflow supplies exact provenance."""
+    if os.environ.get('PAPER2_AI_FINAL_EVALUATION_AUTHORIZED') != 'YES':
+        raise PermissionError('Final evaluation runner is not frozen/authorized')
+    if os.environ.get('GITHUB_ACTIONS') != 'true':
+        raise PermissionError('Final evaluation is authorized only in GitHub Actions')
+    if os.environ.get('GITHUB_EVENT_NAME') != 'workflow_dispatch':
+        raise PermissionError('Final evaluation requires manual workflow_dispatch')
+    if os.environ.get('GITHUB_REPOSITORY') != FROZEN_EVALUATION_REPOSITORY:
+        raise PermissionError('Final evaluation repository mismatch')
+    if os.environ.get('GITHUB_REF') != FROZEN_EVALUATION_REF:
+        raise PermissionError('Final evaluation frozen ref mismatch')
+    expected_workflow_ref = (
+        f'{FROZEN_EVALUATION_REPOSITORY}/{FROZEN_EVALUATION_WORKFLOW_PATH}'
+        f'@{FROZEN_EVALUATION_REF}'
+    )
+    if os.environ.get('GITHUB_WORKFLOW_REF') != expected_workflow_ref:
+        raise PermissionError('Final evaluation workflow ref/path mismatch')
+    evaluator_sha = _full_git_sha(
+        os.environ.get('PAPER2_AI_FROZEN_EVALUATOR_SHA', ''),
+        'PAPER2_AI_FROZEN_EVALUATOR_SHA',
+    )
+    workflow_sha = _full_git_sha(
+        os.environ.get('PAPER2_AI_FROZEN_WORKFLOW_SHA', ''),
+        'PAPER2_AI_FROZEN_WORKFLOW_SHA',
+    )
+    if _full_git_sha(os.environ.get('GITHUB_SHA', ''), 'GITHUB_SHA') != workflow_sha:
+        raise PermissionError('workflow execution SHA differs from frozen workflow SHA')
+    repo_root = Path(__file__).resolve().parents[3]
+    actual_source = subprocess.check_output(
+        ['git', 'rev-parse', 'HEAD'], cwd=repo_root, text=True
+    ).strip().lower()
+    if _full_git_sha(actual_source, 'checked-out evaluator SHA') != evaluator_sha:
+        raise PermissionError('checked-out evaluator source differs from frozen evaluator SHA')
+    try:
+        run_id = int(os.environ.get('GITHUB_RUN_ID', ''))
+        run_attempt = int(os.environ.get('GITHUB_RUN_ATTEMPT', ''))
+    except ValueError as exc:
+        raise PermissionError('GitHub run provenance is invalid') from exc
+    if run_id <= 0 or run_attempt <= 0:
+        raise PermissionError('GitHub run provenance must be positive')
+    return {
+        'evaluator_sha': evaluator_sha,
+        'workflow_sha': workflow_sha,
+        'run_id': run_id,
+        'run_attempt': run_attempt,
+        'workflow_ref': expected_workflow_ref,
+    }
 
 
 def frozen_registry() -> dict:
