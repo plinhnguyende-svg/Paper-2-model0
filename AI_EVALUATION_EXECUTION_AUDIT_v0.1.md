@@ -43,9 +43,11 @@ single 3,600-row panel.
 
 ## What remains intentionally blocked
 
-`run_evaluation_shard()` calls the existing unconditional
-`require_evaluation_freeze()` before checkpoint access, output creation, or
-held-out scenario generation. The new PR-only workflow runs contract tests and
+`run_evaluation_shard()` calls the exact-source `require_evaluation_freeze()`
+before checkpoint access, output creation, or held-out scenario generation.
+The gate is closed by default and requires a manual `workflow_dispatch` on the
+dedicated frozen ref, exact workflow path, literal evaluator/workflow SHAs,
+matching checked-out HEAD and positive GitHub run provenance. The new PR-only workflow runs contract tests and
 a synthetic interruption/recovery exercise only. It has no `workflow_dispatch`
 trigger and cannot launch final evaluation.
 
@@ -94,3 +96,24 @@ hardening gaps. They are corrected before any freeze:
 
 These changes preserve the scientific design and keep held-out execution closed.
 They only tighten crash recovery, provenance and hidden-path guarantees.
+
+
+## Freeze-compatible authorization surface
+
+The evaluator now contains its final latent authorization contract before
+freeze. It remains fail-closed in ordinary CI and local execution. A later
+workflow does not modify evaluator code: it must run from
+`refs/heads/ai-final-evaluation-v0.1-frozen`, at
+`.github/workflows/ai_final_evaluation_v0.1.yml`, and hard-code both the
+audited evaluator SHA and audited workflow SHA. The gate also requires
+`workflow_dispatch`, the expected repository, matching `GITHUB_SHA`, the
+checked-out evaluator HEAD, and positive GitHub run ID/attempt.
+
+Two CLI wrappers are included in the evaluator freeze candidate. They expose
+only operational archive/output/shard/origin/resume arguments; evaluator and
+workflow SHAs are derived from the authorization gate rather than manual
+inputs. The monolithic final-evaluation path remains permanently disabled.
+
+This removes the circular-freeze problem: the next workflow PR can add only
+dispatch/durability orchestration while checking out this exact evaluator
+source, rather than changing scientific evaluator code after freeze.
