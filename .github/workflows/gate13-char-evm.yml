@@ -1,0 +1,69 @@
+name: Gate 13 CHAR Foundry source and Base snapshot
+on:
+  push:
+    branches:
+      - research/gate13-char-evm
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-evm:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout research branch
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: stable
+
+      - name: Fetch pinned public source and dependencies
+        run: |
+          set -euo pipefail
+          cd gate13-char
+          mkdir -p lib
+          git clone https://github.com/ToucanProtocol/dynamic-fee-pools.git lib/dynamic-fee-pools
+          git -C lib/dynamic-fee-pools checkout --detach 7aef954dae1bd0c7add4ed66d216251110521b16
+          git clone --depth 1 --branch v4.9.6 https://github.com/OpenZeppelin/openzeppelin-contracts.git lib/openzeppelin-contracts
+          git clone --depth 1 --branch v4.0.3 https://github.com/PaulRBerg/prb-math.git lib/prb-math
+          {
+            echo "forge: $(forge --version)"
+            for d in lib/dynamic-fee-pools lib/openzeppelin-contracts lib/prb-math; do
+              echo "$d: $(git -C "$d" rev-parse HEAD)"
+            done
+          } | tee SOURCE_PIN_MANIFEST.txt
+
+      - name: Execute original Solidity calculator on EVM
+        run: |
+          set -euo pipefail
+          cd gate13-char
+          forge test --match-path test/SourceCHARBoundary.t.sol -vvvv 2>&1 | tee FOUNDRY_RESULTS.log
+
+      - name: Read coherent Base state (best effort; separately labeled)
+        if: always()
+        env:
+          BASE_RPC_URL: ${{ secrets.BASE_RPC_URL }}
+        run: |
+          set -euo pipefail
+          bash gate13-char/scripts/snapshot_base.sh gate13-char/block_state
+          cat gate13-char/block_state/STATUS.txt
+
+      - name: Export immutable verification artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gate13-char-evm-evidence
+          path: |
+            gate13-char/FOUNDRY_RESULTS.log
+            gate13-char/SOURCE_PIN_MANIFEST.txt
+            gate13-char/block_state/**
+          if-no-files-found: warn
