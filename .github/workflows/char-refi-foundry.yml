@@ -53,6 +53,16 @@ jobs:
           bash scripts/snapshot_base.sh block_state
           cat block_state/STATUS.txt
 
+      - name: Historical FeeSetup transaction and same-block contract state (best effort)
+        if: always()
+        env:
+          BASE_RPC_URL: ${{ secrets.BASE_RPC_URL }}
+        run: |
+          bash scripts/audit_historical_base.sh \
+            0x1e4187be16964075654028ea7c92c02fc798d4bb097cab53efb5847cd85c91c0 \
+            historical_base_evidence
+          cat historical_base_evidence/STATUS.txt
+
       - name: Archive test evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -62,4 +72,5 @@ jobs:
             FOUNDRY_RESULTS.log
             SOURCE_PIN_MANIFEST.txt
             block_state/**
+            historical_base_evidence/**
           if-no-files-found: warn
