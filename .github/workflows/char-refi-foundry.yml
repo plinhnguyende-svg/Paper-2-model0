@@ -1,7 +1,7 @@
 name: CHAR ReFi Foundry validation
 on:
   push:
-    branches: [research/char-refi-standalone]
+    branches: [research/char-refi-standalone, main]
   workflow_dispatch:
 
 permissions:
@@ -22,7 +22,7 @@ jobs:
         with:
           version: stable
 
-      - name: Download pinned upstream dependencies
+      - name: Enforce research boundary and data provenance\n        run: python3 scripts/check_research_boundary.py\n\n      - name: Download pinned upstream dependencies
         run: |
           set -euo pipefail
           mkdir -p lib
