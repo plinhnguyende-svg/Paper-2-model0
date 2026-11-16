@@ -3,6 +3,7 @@ pragma solidity 0.8.19;
 
 import {FeeDistribution} from "dynamic-fee-pools/src/interfaces/IFeeCalculator.sol";
 import {MockPool} from "../src/MockPool.sol";
+import {MockTCO2} from "../src/MockTCO2.sol";
 
 interface IDeployedFeeCalculator {
     function calculateDepositFees(address pool, address tco2, uint256 amount)
@@ -21,7 +22,6 @@ interface IDeployedFeeCalculator {
 /// End-of-block state is examined; producer-wallet identity is NOT established.
 contract DeployedFeeCalculatorForkTest {
     address constant CALCULATOR = 0x6A4549759C475d845d4AE074B3656dC257490DA5;
-    address constant TOKEN = address(0xA11CE); // MockPool-only identifier; not a real TCO2
     address constant RECIPIENT_A = 0x7d3E7BbD4e9e4e1507FF4a4b488934abfbAcb801;
     address constant RECIPIENT_B = 0xcA07B1B8A2D6767178F7f7038A3c54aC949d9440;
 
@@ -42,21 +42,23 @@ contract DeployedFeeCalculatorForkTest {
     }
 
     function testSingleProjectFeeAtRealCalculator() public {
-        MockPool p = new MockPool(TOKEN);
+        MockTCO2 token = new MockTCO2(777);
+        MockPool p = new MockPool(address(token));
         p.setInventory(100e18, 100e18);
         FeeDistribution memory d = IDeployedFeeCalculator(CALCULATOR).calculateDepositFees(
-            address(p), TOKEN, 10e18
+            address(p), address(token), 10e18
         );
         require(_fee(d) == 1e18, "real-calculator single-project 10% fee");
         require(d.shares[0] == 75e16 && d.shares[1] == 25e16, "real-calculator 75/25");
     }
 
     function testDominantDepositIsOutsideRangeAtDeployedParams() public {
-        MockPool p = new MockPool(TOKEN);
+        MockTCO2 token = new MockTCO2(777);
+        MockPool p = new MockPool(address(token));
         p.setInventory(100e18, 101e18);
         // This is a deployed EVM test of the FeeCalculator call:
         // with a ratio scale of 1.25, a dominant asset can be outside range.
-        try IDeployedFeeCalculator(CALCULATOR).calculateDepositFees(address(p), TOKEN, 10e18)
+        try IDeployedFeeCalculator(CALCULATOR).calculateDepositFees(address(p), address(token), 10e18)
             returns (FeeDistribution memory)
         {
             revert("dominant deposit unexpectedly accepted");
@@ -66,10 +68,11 @@ contract DeployedFeeCalculatorForkTest {
     }
 
     function testMinorityDepositWithinRangeAtDeployedParams() public {
-        MockPool p = new MockPool(TOKEN);
+        MockTCO2 token = new MockTCO2(777);
+        MockPool p = new MockPool(address(token));
         p.setInventory(10e18, 100e18);
         FeeDistribution memory d = IDeployedFeeCalculator(CALCULATOR).calculateDepositFees(
-            address(p), TOKEN, 10e18
+            address(p), address(token), 10e18
         );
         require(_fee(d) > 0 && _fee(d) < 10e18, "minority deposit fee invalid");
     }
