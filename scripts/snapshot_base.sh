@@ -12,7 +12,19 @@ if ! BLOCK=$(cast block-number --rpc-url "$RPC" 2>"$OUT/rpc_error.txt"); then
   echo "UNVERIFIED: Base RPC unavailable" | tee "$OUT/STATUS.txt"
   exit 0
 fi
+if [[ -n "${BASE_BLOCK_NUMBER:-}" ]]; then
+  if [[ ! "$BASE_BLOCK_NUMBER" =~ ^[0-9]+$ ]]; then
+    echo "INVALID_BLOCK: BASE_BLOCK_NUMBER must be a decimal integer" | tee "$OUT/STATUS.txt"
+    exit 2
+  fi
+  if (( BASE_BLOCK_NUMBER > BLOCK )); then
+    echo "INVALID_BLOCK: historical block is beyond chain head $BLOCK" | tee "$OUT/STATUS.txt"
+    exit 2
+  fi
+  BLOCK="$BASE_BLOCK_NUMBER"
+fi
 echo "Base block: $BLOCK" | tee "$OUT/STATUS.txt"
+echo "Snapshot represents END-OF-BLOCK state, NOT necessarily state directly before a transaction within that block." >> "$OUT/STATUS.txt"
 echo "Same-block data; no proof that public GitHub source matches proxy bytecode." >> "$OUT/STATUS.txt"
 printf '%s\n' "$BLOCK" > "$OUT/block.txt"
 query() {
