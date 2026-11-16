@@ -12,3 +12,6 @@ Evidence layers:
 - This PR update triggers a separate deployed-contract fork test.
 - Historical upgraded proxy, FeeSetup, receipts, and actual CORC inventory
   require additional same-block/transaction-prestate reconciliation.
+
+## Re-test after fixing EVM fixture
+The deployed calculator calls TCO2.getVintageData; revised fixture supplies this ABI and a project ID. Test results are only valid if the real fixed-block fork run passes.
