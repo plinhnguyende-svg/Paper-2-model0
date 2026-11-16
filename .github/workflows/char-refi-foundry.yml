@@ -63,6 +63,18 @@ jobs:
             historical_base_evidence
           cat historical_base_evidence/STATUS.txt
 
+      - name: Audit two historical proxy upgrades (archive RPC required)
+        if: always()
+        env:
+          BASE_RPC_URL: ${{ secrets.BASE_RPC_URL }}
+        run: |
+          if [[ -n "${BASE_RPC_URL:-}" ]]; then
+            bash scripts/audit_historical_blocks.sh history
+          else
+            mkdir -p history
+            echo "UNVERIFIED: BASE_RPC_URL archive secret not configured" > history/STATUS.txt
+          fi
+
       - name: Archive test evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -72,5 +84,6 @@ jobs:
             FOUNDRY_RESULTS.log
             SOURCE_PIN_MANIFEST.txt
             block_state/**
+            history/**
             historical_base_evidence/**
           if-no-files-found: warn
