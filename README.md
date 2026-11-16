@@ -1,56 +1,50 @@
-# Paper 2 — Model 0 v0.1
+# Biochar ReFi — smart-contract economic mechanism research
 
-Executable baseline for the locked architecture:
+**This working tree is intentionally separated from the previous Paper-2
+N-H / S-H / F-H perishable-food simulation.**
 
-- `N-H`: no blockchain / rule-based decisions
-- `S-H`: selective permissioned blockchain / rule-based decisions
-- `F-H`: full rival-availability visibility / rule-based decisions
+It contains **only** the Toucan CHAR protocol source validation and
+deployment-state audit. The earlier SCM project remains unchanged on `main`.
 
-Network: 2 exporters → 1 importer → 3 retailers → consumers, one perishable SKU.
+## Research boundary
 
-## Install
+- Setting: biochar carbon removal supply chain and tokenized CORCs.
+- Core question: how programmable fee, execution and allocation rules shape
+  intermediary decisions, liquidity, project representation and value
+  transmission in a supply chain.
+- **No claim** of blockchain superiority.
+- **No verified producer-royalty amounts, beta, additional biochar output,
+  or marginal carbon removal** currently.
+- EVM source tests are distinct from historical Base mainnet deployment proofs.
 
-```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -e ".[dev]"
-```
-
-## Test
-
-```bash
-pytest -q
-```
-
-## Deterministic mechanism demo
+## Run
 
 ```bash
-python scripts/run_deterministic_demo.py
+git clone --branch research/char-refi-standalone \
+  https://github.com/plinhnguyende-svg/Paper-2-model0.git
+cd Paper-2-model0
+mkdir -p lib
+git clone https://github.com/ToucanProtocol/dynamic-fee-pools.git lib/dynamic-fee-pools
+git -C lib/dynamic-fee-pools checkout --detach 7aef954dae1bd0c7add4ed66d216251110521b16
+git clone --depth 1 --branch v4.9.6 https://github.com/OpenZeppelin/openzeppelin-contracts.git lib/openzeppelin-contracts
+git clone --depth 1 --branch v4.0.3 https://github.com/PaulRBerg/prb-math.git lib/prb-math
+forge test -vvvv
 ```
 
-## Baseline stochastic experiment
+GitHub Actions automatically runs `forge test` on pushes to this clean branch.
+For current Base state, the optional script reads all views at one block.
+For historical EVM matching, choose the historical block and use an archive
+RPC. Never apply current values retrospectively.
 
-```bash
-python scripts/run_baseline.py \
-  --config experiments/baseline.yaml \
-  --output outputs/baseline
-```
+## Data policy
 
-The run writes:
+See [data/README.md](data/README.md). Synthetic analyses are separated
+from on-chain observations; no generated transaction history is presented as
+empirical data.
 
-- `replication_level.csv`
-- `paired_effects.csv`
-- `regime_summary.csv`
-- `manifest.json`
+## Migration to a truly separate repository
 
-## Identification
-
-`N → S` changes whether the importer observes verified exporter availability before allocation.
-
-`S → F` keeps importer information/allocation unchanged and additionally reveals current rival availability to each exporter before readiness preparation.
-
-The same exogenous demand and availability path is reused across N/S/F within every replication.
-
-## AI gate
-
-No RL or LLM policy is present in Model 0. The later AI branch should replace decision-policy classes while preserving the same observation objects and information rights.
+Recommended new repository name: `biochar-refi-smart-contract-design`.
+Create an empty GitHub repository, clone this clean branch, then push its
+contents as the new default main. **Do not merge into the old Paper-2 main.**
+Git history remains shared until a truly independent repository is created.
