@@ -15,3 +15,6 @@ Evidence layers:
 
 ## Re-test after fixing EVM fixture
 The deployed calculator calls TCO2.getVintageData; revised fixture supplies this ABI and a project ID. Test results are only valid if the real fixed-block fork run passes.
+
+## Historical upgrade checkpoints
+Re-run with public Base RPC to collect proxy implementation, calculator, fee parameters and upgrade receipts at 13277611/13277612 and 28317184/28317185. Every block call is independently marked OK/FAILED.
