@@ -84,12 +84,8 @@ jobs:
         env:
           BASE_RPC_URL: ${{ secrets.BASE_RPC_URL }}
         run: |
-          if [[ -n "${BASE_RPC_URL:-}" ]]; then
-            bash scripts/audit_historical_blocks.sh history
-          else
-            mkdir -p history
-            echo "UNVERIFIED: BASE_RPC_URL archive secret not configured" > history/STATUS.txt
-          fi
+          bash scripts/audit_historical_blocks.sh history
+          echo "Historical audit done. Every call's STATUS is authoritative; workflow success does not imply matching."
 
       - name: Archive test evidence
         if: always()
