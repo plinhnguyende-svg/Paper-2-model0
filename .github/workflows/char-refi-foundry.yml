@@ -3,6 +3,8 @@ on:
   push:
     branches: [research/char-refi-standalone, main]
   workflow_dispatch:
+  pull_request:
+    branches: [research/char-refi-standalone]
 
 permissions:
   contents: read
