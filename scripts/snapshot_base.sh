@@ -36,6 +36,14 @@ query() {
   fi
 }
 query proxy_implementation_slot cast storage "$POOL" "$SLOT" --block "$BLOCK" --rpc-url "$RPC"
+WORD=$(tr -d ' \r\n' < "$OUT/proxy_implementation_slot.txt" 2>/dev/null || true)
+if [[ "$WORD" =~ ^0x[0-9a-fA-F]{64}$ ]]; then
+  IMPLEMENTATION="0x${WORD: -40}"
+  printf '%s\n' "$IMPLEMENTATION" > "$OUT/proxy_implementation_address.txt"
+  query proxy_implementation_runtime_code cast code "$IMPLEMENTATION" --block "$BLOCK" --rpc-url "$RPC"
+else
+  echo "proxy_implementation_code: UNVERIFIED (EIP-1967 slot missing/invalid)" >> "$OUT/STATUS.txt"
+fi
 query pool_version cast call "$POOL" 'VERSION()(string)' --block "$BLOCK" --rpc-url "$RPC"
 query pool_fee_calculator cast call "$POOL" 'feeCalculator()(address)' --block "$BLOCK" --rpc-url "$RPC"
 query pool_total_underlying cast call "$POOL" 'totalUnderlyingSupply()(uint256)' --block "$BLOCK" --rpc-url "$RPC"
@@ -52,6 +60,7 @@ if [[ -s "$OUT/pool_fee_calculator.txt" ]]; then
   fi
 fi
 printf '%s\n' "$FEE" > "$OUT/active_fee_calculator_address.txt"
+query active_fee_calculator_runtime_code cast code "$FEE" --block "$BLOCK" --rpc-url "$RPC"
 query calculator_version cast call "$FEE" 'VERSION()(string)' --block "$BLOCK" --rpc-url "$RPC"
 query fee_setup cast call "$FEE" 'getFeeSetup()(address[],uint256[])' --block "$BLOCK" --rpc-url "$RPC"
 query calculator_owner cast call "$FEE" 'owner()(address)' --block "$BLOCK" --rpc-url "$RPC"
