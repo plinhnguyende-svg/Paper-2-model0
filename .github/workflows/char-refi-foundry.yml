@@ -45,6 +45,22 @@ jobs:
           set -euo pipefail
           forge test --match-path test/SourceCHARBoundary.t.sol -vvvv 2>&1 | tee FOUNDRY_RESULTS.log
 
+      - name: Execute deployed Base FeeCalculator fork tests (pinned block)
+        if: always()
+        env:
+          BASE_RPC_URL: ${{ secrets.BASE_RPC_URL }}
+        run: |
+          set -o pipefail
+          RPC="${BASE_RPC_URL:-https://mainnet.base.org}"
+          if forge test --match-path test/DeployedFeeCalculatorFork.t.sol \
+              --fork-url "$RPC" --fork-block-number 58258072 -vvv \
+              2>&1 | tee FORK_RESULTS.log; then
+            echo "FORK_EVM_PASS at Base block 58258072" > FORK_STATUS.txt
+          else
+            echo "FORK_EVM_NOT_VERIFIED_OR_FAILED: check FORK_RESULTS.log" > FORK_STATUS.txt
+          fi
+          cat FORK_STATUS.txt
+
       - name: Snapshot current Base state, separately from tests
         if: always()
         env:
@@ -82,6 +98,8 @@ jobs:
           name: char-refi-foundry-evidence
           path: |
             FOUNDRY_RESULTS.log
+            FORK_RESULTS.log
+            FORK_STATUS.txt
             SOURCE_PIN_MANIFEST.txt
             block_state/**
             history/**
