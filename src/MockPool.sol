@@ -15,6 +15,17 @@ contract MockPool {
         total = total_;
     }
 
+    // Historical Biochar and ERC20able project-ID lookup variants.
+    function totalPerProjectTCO2Supply(uint256) external view returns (uint256) {
+        return ownSupply;
+    }
+    function totalProjectSupply(uint256) external view returns (uint256) {
+        return ownSupply;
+    }
+    function totalUnderlyingSupply() external view returns (uint256) {
+        return total;
+    }
+
     function totalTCO2Supply() external view returns (uint256) {
         return total;
     }
