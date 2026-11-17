@@ -199,8 +199,8 @@ def main():
     except Exception as exc:
         status["status"]="INDEXER_UNAVAILABLE"
         status["failure_type"]=type(exc).__name__
-        status["safe_error"]=str(exc) if str(exc).startswith(("RPC_","WRONG_CHAIN"))
-                              else "REDACTED"
+        status["safe_error"]=(str(exc) if str(exc).startswith(("RPC_","WRONG_CHAIN"))
+                              else "REDACTED")
     finally:
         save_json(out/"INDEXER_SUMMARY.json",status)
         print(json.dumps(status,indent=2),flush=True)
