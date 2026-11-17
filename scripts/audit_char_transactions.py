@@ -4,6 +4,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 from pathlib import Path
 import subprocess
 
@@ -43,6 +44,8 @@ def main():
         result = subprocess.run(["cast", "rpc", method, *[json.dumps(v) for v in params],
                                  "--rpc-url", rpc], capture_output=True, text=True, timeout=25)
         if result.returncode:
+            detail = re.sub(r"https?://[^\\s]+", "[URL_REDACTED]", result.stderr.replace(rpc, "[RPC_REDACTED]"))
+            save("RPC_ERROR.json", dict(method=method, detail=detail[:1500]))
             raise RuntimeError(f"{method}: cast RPC failed")
         return json.loads(result.stdout)
     try:
@@ -50,8 +53,8 @@ def main():
             raise RuntimeError("wrong chain")
         logs = []
         # Chunked scan, with explicit gaps. Empty window is not evidence of no activity elsewhere.
-        for start in range(args.start, args.end+1, 10000):
-            end = min(start+9999, args.end)
+        for start in range(args.start, args.end+1, 1000):
+            end = min(start+999, args.end)
             try:
                 batch = call("eth_getLogs", [dict(address=POOL, fromBlock=hex(start),
                               toBlock=hex(end), topics=[TRANSFER])])
