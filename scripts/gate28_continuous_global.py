@@ -311,13 +311,40 @@ def study():
         return data
 
 
+def robustness():
+    """Regime coverage beyond unbounded-liquidity positive-pass-through grid."""
+    with localcontext() as ctx:
+        ctx.prec=70
+        base=replace(Parameters(),q=D(10),c=D(".15"),
+                     v=D(".55"),beta=D(".25"),ratio=D("1.25"),
+                     scale=D(".15"))
+        cases=[
+            ("H0_EARLY_LIQUIDITY_5",replace(base,liquidity=D(5))),
+            ("H0_CONTRACT_BETA_ZERO",replace(base,beta=D(0))),
+            ("H0_HIGH_TRANSACTION_GAS",replace(base,gas=D(50)))
+        ]
+        records=[]
+        for label,p in cases:
+            engine=ContinuousDesigner(p,max_nodes=2400)
+            cert=engine.solve()
+            cert["robustness_name"]=label
+            cert["reference"]=engine._serialize_row(engine.at(p.scale))
+            cert["cash_cap"]=str(liquidity_bound(p))
+            cert["beta_assumed"]=str(p.beta)
+            cert["gas_assumed"]=str(p.gas)
+            records.append(cert)
+        return records
+
+
 def main():
     ap=argparse.ArgumentParser()
     ap.add_argument("--out",default="results/gate28")
     args=ap.parse_args()
     out=Path(args.out);out.mkdir(parents=True,exist_ok=True)
     data=study()
+    extra=robustness()
     (out/"CONTINUOUS_SCALE_CERTIFICATES_SYNTHETIC.json").write_text(json.dumps(data,indent=2)+"\n")
+    (out/"REGIME_ROBUSTNESS_SYNTHETIC.json").write_text(json.dumps(extra,indent=2)+"\n")
     summary=[
         {k:row.get(k) for k in
          ("benchmark","q","status","best_feasible_scale_numeric",
@@ -327,6 +354,11 @@ def main():
     ]
     (out/"SUMMARY.json").write_text(json.dumps(summary,indent=2)+"\n")
     print(json.dumps(summary,indent=2))
+    print("REGIME_ROBUSTNESS="+json.dumps([
+      dict(case=x["robustness_name"], status=x["status"],
+           selected=x.get("selected_feasible"),
+           at_historical_scale=x["reference"]["regime"])
+      for x in extra],default=str))
 
 
 if __name__=="__main__":
