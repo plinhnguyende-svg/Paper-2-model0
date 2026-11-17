@@ -6,7 +6,7 @@ import json
 import os
 from pathlib import Path
 import subprocess
-import urllib.request
+
 
 POOL = "0x20b048fa035d5763685d695e66adf62c5d9f5055"
 TRANSFER = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"
@@ -40,14 +40,11 @@ def main():
     def save(name, data):
         (out/name).write_text(json.dumps(data, indent=2)+"\n")
     def call(method, params):
-        payload = json.dumps(dict(jsonrpc="2.0", id=1, method=method, params=params)).encode()
-        req = urllib.request.Request(rpc, payload, {"Content-Type":"application/json"})
-        with urllib.request.urlopen(req, timeout=20) as response:
-            data = json.load(response)
-        if "error" in data:
-            # Preserve method/code, not RPC URLs, credentials or provider error text.
-            raise RuntimeError(f"{method}: RPC error {data['error'].get('code')}")
-        return data["result"]
+        result = subprocess.run(["cast", "rpc", method, *[json.dumps(v) for v in params],
+                                 "--rpc-url", rpc], capture_output=True, text=True, timeout=25)
+        if result.returncode:
+            raise RuntimeError(f"{method}: cast RPC failed")
+        return json.loads(result.stdout)
     try:
         if int(call("eth_chainId", []), 16) != 8453:
             raise RuntimeError("wrong chain")
@@ -118,6 +115,7 @@ def main():
         manifest = {f.name:hashlib.sha256(f.read_bytes()).hexdigest() for f in out.iterdir() if f.is_file() and f.name != "SHA256.json"}
         save("SHA256.json", manifest)
         print(json.dumps(summary, indent=2))
+    return 1 if summary.get("error") or summary["scan_errors"] else 0
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())
