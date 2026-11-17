@@ -42,7 +42,7 @@ jobs:
           BASE_RPC_URL: ${{ secrets.BASE_RPC_URL }}
         run: |
           set -euo pipefail
-          forge test --via-ir --match-path test/HistoricalCHARExactFeeFork.t.sol -vvv 2>&1 | tee gate25/EXACT_FEE_REPLAY.log
+          forge test --via-ir --match-path test/HistoricalCHARExactFeeFork.t.sol -vvvv 2>&1 | tee gate25/EXACT_FEE_REPLAY.log
       - name: Archive full verification output even when replay fails
         if: always()
         uses: actions/upload-artifact@v4
