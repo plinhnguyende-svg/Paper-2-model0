@@ -11,7 +11,7 @@ sys.path.insert(0,str(Path(__file__).resolve().parents[1]/"scripts"))
 from gate29_event_census import (
     as_int,covered_intervals,missing_intervals,valid_rpc_log,
     extract_event_rows,tx_candidates,identification_audit,write_panel,
-    receipt_row
+    receipt_row,reconcile_zero_fee_by_raw_transfers
 )
 from gate29_prestate_enrich import reference_enrichment,VERIFIED_GATE25
 
@@ -99,6 +99,35 @@ class CensusTests(unittest.TestCase):
             self.assertIsNone(rows[0]["pre_hhi"])
             self.assertEqual(rows[0]["fee_attribution"],
                              "NOT_RECONCILED_OR_MULTIACTION")
+
+    def test_zero_fee_deposit_requires_exact_gross_mint_and_underlying_transfer(self):
+        from char_receipt_accounting import TRANSFER,POOL,ZERO
+        td="0x"+"a"*64
+        token="0x"+"b"*40
+        actor="0x"+"3"*40
+        amount=10**18
+        def flow(contract,sender,recipient,n):
+            return {
+                "address":contract,
+                "topics":[TRANSFER,"0x"+sender[2:].rjust(64,"0"),
+                          "0x"+recipient[2:].rjust(64,"0")],
+                "data":"0x"+format(n,"064x")}
+        dep={"address":POOL,"topics":[td],
+             "data":"0x"+token[2:].rjust(64,"0")+format(amount,"064x")}
+        receipt={"logs":[dep,flow(POOL,ZERO,actor,amount),
+                         flow(token,actor,POOL,amount)]}
+        names={
+            "Deposited":td,
+            "Redeemed":"0x"+"c"*64,
+            "DepositFeePaid":"0x"+"d"*64,
+            "RedeemFeePaid":"0x"+"e"*64,
+            "RedeemFeeBurnt":"0x"+"f"*64
+        }
+        r=reconcile_zero_fee_by_raw_transfers(receipt,names)
+        self.assertEqual(r["status"],"RECEIPT_ZERO_FEE_MATCH")
+        self.assertEqual(r["fee_raw"],0)
+        receipt["logs"][-1]["data"]="0x"+format(amount-1,"064x")
+        self.assertIsNone(reconcile_zero_fee_by_raw_transfers(receipt,names))
 
     def test_event_paired_fee_kept_with_lower_provenance_than_receipt(self):
         td="0x"+"a"*64
