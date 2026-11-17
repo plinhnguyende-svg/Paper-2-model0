@@ -58,6 +58,7 @@ jobs:
             echo "FORK_EVM_PASS at Base block 58258072" > FORK_STATUS.txt
           else
             echo "FORK_EVM_NOT_VERIFIED_OR_FAILED: check FORK_RESULTS.log" > FORK_STATUS.txt
+            exit 1
           fi
           cat FORK_STATUS.txt
 
@@ -87,12 +88,20 @@ jobs:
           bash scripts/audit_historical_blocks.sh history
           echo "Historical audit done. Every call's STATUS is authoritative; workflow success does not imply matching."
 
+      - name: Discover actual CHAR mint-burn transactions and attempt index-aware replay
+        if: always()
+        timeout-minutes: 8
+        env:
+          BASE_RPC_URL: ${{ secrets.BASE_RPC_URL }}
+        run: python3 scripts/audit_char_transactions.py --start 58000000 --end 58258072 --out transaction_evidence
+
       - name: Archive test evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: char-refi-foundry-evidence
           path: |
+            transaction_evidence/**
             FOUNDRY_RESULTS.log
             FORK_RESULTS.log
             FORK_STATUS.txt

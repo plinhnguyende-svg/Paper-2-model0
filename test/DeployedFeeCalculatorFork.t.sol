@@ -28,7 +28,6 @@ interface ICharPoolAtBlock {
 contract DeployedFeeCalculatorForkTest {
     address constant PUBLISHED_CALCULATOR = 0x6A4549759C475d845d4AE074B3656dC257490DA5;
     address constant CHAR_POOL = 0x20b048fA035D5763685D695e66aDF62c5D9F5055;
-    address constant TOKEN = address(0xA11CE);
 
     event HistoricalParameters(
         address calculator,
@@ -68,12 +67,13 @@ contract DeployedFeeCalculatorForkTest {
         require(PUBLISHED_CALCULATOR.code.length != 0, "no calculator bytecode at fork block");
         ICalculatorAtBlock c = ICalculatorAtBlock(PUBLISHED_CALCULATOR);
         address active = address(0);
-        // The published calculator address need not be active for CHAR at the block.
+        // This suite is pinned to a checkpoint where the calculator must be active.
         if (CHAR_POOL.code.length != 0) {
             try ICharPoolAtBlock(CHAR_POOL).feeCalculator() returns (address a) {
                 active = a;
             } catch {}
         }
+        require(active == PUBLISHED_CALCULATOR, "calculator not active for CHAR");
         emit HistoricalParameters(
             PUBLISHED_CALCULATOR,
             active,
@@ -134,6 +134,7 @@ contract DeployedFeeCalculatorForkTest {
 
     function testNearDominantDepositDomainAndBoundaryGrid() public {
         ICalculatorAtBlock c = ICalculatorAtBlock(PUBLISHED_CALCULATOR);
+        require(c.depositFeeRatioScale() == 125e16, "checkpoint ratio changed");
         MockTCO2 token = new MockTCO2(777);
         MockPool p = new MockPool(address(token));
         uint256[8] memory others = [
@@ -142,11 +143,17 @@ contract DeployedFeeCalculatorForkTest {
         ];
         for (uint256 i = 0; i < others.length; ++i) {
             p.setInventory(100e18, 100e18 + others[i]);
-            try c.calculateDepositFees(address(p), TOKEN, 10e18)
+            try c.calculateDepositFees(address(p), address(token), 10e18)
                 returns (FeeDistribution memory d) {
+                require(others[i] == 0, "dominant dynamic deposit unexpectedly accepted");
+                require(_total(d) == 1e18, "single-project deposit fee mismatch");
                 emit EVMFeeProbe(others[i], true, false, _total(d));
-            } catch {
+            } catch Error(string memory reason) {
+                require(others[i] > 0, "single-project deposit reverted");
+                require(keccak256(bytes(reason)) == keccak256(bytes("Deposit outside range")), "grid wrong revert reason");
                 emit EVMFeeProbe(others[i], true, true, 0);
+            } catch (bytes memory) {
+                revert("grid unexpected custom/panic revert");
             }
             try this.redemptionProbe(address(p), address(token), 10e18) returns (uint256 fee) {
                 emit EVMFeeProbe(others[i], false, false, fee);
