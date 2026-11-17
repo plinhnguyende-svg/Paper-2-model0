@@ -100,6 +100,24 @@ class CensusTests(unittest.TestCase):
             self.assertEqual(rows[0]["fee_attribution"],
                              "NOT_RECONCILED_OR_MULTIACTION")
 
+    def test_event_paired_fee_kept_with_lower_provenance_than_receipt(self):
+        td="0x"+"a"*64
+        tf="0x"+"b"*64
+        depositor="0x"+"3"*40
+        deposited=fake_log("Deposited",td,
+                 "0x"+("0"*24+"a"*40)+format(100000,"064x"),li=4)
+        fee=fake_log("DepositFeePaid",tf,
+                 "0x"+("0"*24+"3"*40)+format(1200,"064x"),li=3)
+        with tempfile.TemporaryDirectory() as tmp:
+            events=extract_event_rows([fee,deposited],
+                           {"Deposited":td,"DepositFeePaid":tf})
+            panel=write_panel(Path(tmp),[],events,{"Deposited":td,"DepositFeePaid":tf})
+            self.assertEqual(panel[0]["actual_fee_raw"],1200)
+            self.assertEqual(panel[0]["effective_fee_rate"],"0.012")
+            self.assertEqual(panel[0]["fee_attribution"],
+                             "POOL_FEE_EVENT_PAIRED_UNRECONCILED")
+            self.assertEqual(panel[0]["receipt_status"],"NOT_FETCHED")
+
     def test_identification_does_not_infer_causality(self):
         r=identification_audit([],[],[],{"complete":True},
                                 {"complete":True,"addresses":["0x"+"1"*40]})
