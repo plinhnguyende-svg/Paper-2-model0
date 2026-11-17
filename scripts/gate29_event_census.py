@@ -279,32 +279,32 @@ def receipt_row(rpc, txhash, discovered, topics):
     return record,receipt
 
 
-def first_deployed_pool_block(rpc,head):
+def first_deployed_contract_block(rpc,address,head):
     """Historical code-existence boundary, assuming no code selfdestruct/redeploy.
     Verified only as first nonempty eth_getCode within [0,head] on archive RPC.
     """
-    last=rpc.call("eth_getCode",[POOL,hex(head)])
+    last=rpc.call("eth_getCode",[address,hex(head)])
     if not isinstance(last,str) or last=="0x":
         raise ValueError("POOL_NOT_DEPLOYED_AT_CHECKPOINT")
-    first=rpc.call("eth_getCode",[POOL,hex(0)])
+    first=rpc.call("eth_getCode",[address,hex(0)])
     if first!="0x":
         return dict(block=0, status="CODE_EXISTS_AT_GENESIS_UNEXPECTED")
     a,b=0,head
     while a+1<b:
         m=(a+b)//2
-        mid=rpc.call("eth_getCode",[POOL,hex(m)])
+        mid=rpc.call("eth_getCode",[address,hex(m)])
         if mid!="0x":
             b=m
         else:
             a=m
-    if rpc.call("eth_getCode",[POOL,hex(b-1)])!="0x" or \
-       rpc.call("eth_getCode",[POOL,hex(b)])=="0x":
+    if rpc.call("eth_getCode",[address,hex(b-1)])!="0x" or \
+       rpc.call("eth_getCode",[address,hex(b)])=="0x":
         raise ValueError("DEPLOYMENT_BOUNDARY_NOT_VERIFIED")
     return dict(block=b,status="VERIFIED_FIRST_NONEMPTY_CODE_BOUNDARY",
                 semantics="does not prove absence of rare selfdestruct/redeploy history")
 
 
-def census(rpc,out,args,topics):
+def census(rpc,out,args,topics,history_rpc=None):
     journal=out/"POOL_SCAN_JOURNAL.jsonl"
     rawlog=out/"POOL_LOGS.jsonl"
     existing=load_jsonl(journal)
@@ -314,7 +314,7 @@ def census(rpc,out,args,topics):
     successes=covered_intervals(existing)
     head=as_int(rpc.call("eth_blockNumber",[]))
     end=head if args.end_block is None else min(head,args.end_block)
-    deployment=first_deployed_pool_block(rpc,end)
+    deployment=first_deployed_contract_block(history_rpc or rpc,POOL,end)
     effective_start=max(args.start_block,deployment["block"])
     if effective_start>end:
         raise ValueError("START_BEYOND_HEAD")
@@ -377,7 +377,7 @@ def census(rpc,out,args,topics):
                 log_budget_exhausted=(len(work)>0))
 
 
-def scan_calculator_events(rpc,out,args,topics, pool_logs):
+def scan_calculator_events(rpc,out,args,topics, pool_logs,history_rpc=None):
     """Only known verified calculator address; all other calculator versions
     must be separately discovered and queried before claiming complete configs."""
     directory=out/"CALCULATOR";directory.mkdir(exist_ok=True)
@@ -396,14 +396,18 @@ def scan_calculator_events(rpc,out,args,topics, pool_logs):
     # Keep calculator scan budget separate; leave any gaps explicit.
     head=as_int(rpc.call("eth_blockNumber",[]))
     end=head if args.end_block is None else min(head,args.end_block)
-    scan_start=max(args.start_block,min((as_int(x["blockNumber"]) for x in pool_logs),default=0))
+    starts={}
+    history_rpc=history_rpc or rpc
+    for addr in all_addresses:
+        starts[addr]=max(args.start_block,
+                 first_deployed_contract_block(history_rpc,addr,end)["block"])
     queries=0
     start_at=time.monotonic()
     allowed={topics[k] for k in CALC_EVENTS}
     for address in all_addresses:
         records=[x for x in earlier if x.get("address")==address]
         completed=covered_intervals(records)
-        for start,endgap in missing_intervals(scan_start,end,completed):
+        for start,endgap in missing_intervals(starts[address],end,completed):
             for left in range(start,endgap+1,args.chunk):
                 work=[(left,min(endgap,left+args.chunk-1))]
                 while work and queries<args.max_calc_log_calls and \
@@ -443,9 +447,9 @@ def scan_calculator_events(rpc,out,args,topics, pool_logs):
     cover={}
     for address in all_addresses:
         records=[x for x in load_jsonl(journal) if x.get("address")==address]
-        cover[address]=missing_intervals(scan_start,end,covered_intervals(records))
+        cover[address]=missing_intervals(starts[address],end,covered_intervals(records))
     return dict(logs=final,addresses=all_addresses,gaps=cover,
-                effective_start=scan_start,
+                effective_start_by_calculator=starts,
                 complete=all(not x for x in cover.values()),log_calls=queries)
 
 
@@ -601,6 +605,31 @@ def identification_audit(panel,all_events,calc_events,pool_coverage,calc_coverag
                 ])
 
 
+def verify_public_log_provider(provider, topics):
+    """Two independent known-trade canaries; if missing, don't label the
+    public indexer as complete. Each receipt was verified in Gate24/25.
+    """
+    examples=[
+        (13826401,"Deposited",
+         "0x0237beb377836c8ca1bec693cc5d37eff65d3a48b53b68d667fed67839b8193c"),
+        (15709581,"Redeemed",
+         "0xc676a373fc6cec24dd9f744f04a7dd7f975921370be6270185006b25fbd4f034")
+    ]
+    matched=[]
+    for block,event,expected in examples:
+        found=provider.call("eth_getLogs",[{
+          "address":POOL,
+          "fromBlock":hex(block),"toBlock":hex(block),
+          "topics":[topics[event]]
+        }])
+        if not any(log.get("transactionHash","").lower()==expected.lower()
+                   and log.get("topics",[""])[0].lower()==topics[event]
+                   for log in found):
+            raise ValueError("PUBLIC_LOG_PROVIDER_MISSING_KNOWN_HISTORICAL_EVENT")
+        matched.append(dict(block=block,event=event,status="KNOWN_CANARY_LOG_FOUND"))
+    return matched
+
+
 def main():
     ap=argparse.ArgumentParser()
     ap.add_argument("--out",required=True)
@@ -633,8 +662,19 @@ def main():
             raise RuntimeError("WRONG_CHAIN_NOT_BASE")
         topics=topic_map()
         save_json(out/"EVENT_TOPICS.json",topics)
-        pool=census(rpc,out,args,topics)
-        calc=scan_calculator_events(rpc,out,args,topics,pool["logs"])
+        # Preserve credential separation: public indexing RPC is read-only and
+        # only returns logs. Configured private archive RPC remains the
+        # independent source of canonical receipts and historical state.
+        log_rpc=Rpc(os.environ.get("GATE29_LOG_RPC_URL",
+                       "https://base-rpc.publicnode.com"))
+        if as_int(log_rpc.call("eth_chainId",[]))!=CHAIN:
+            raise ValueError("LOG_PROVIDER_NOT_BASE_MAINNET")
+        canaries=verify_public_log_provider(log_rpc,topics)
+        status["public_log_canaries"]=canaries
+        status["log_provider"]="PUBLICNODE_BASE_OR_EXPLICIT_ENV_OVERRIDE"
+        pool=census(log_rpc,out,args,topics,history_rpc=rpc)
+        calc=scan_calculator_events(log_rpc,out,args,topics,pool["logs"],
+                                    history_rpc=rpc)
         events=extract_event_rows(pool["logs"]+calc["logs"],topics)
         append_file=out/"ALL_DECODED_EVENTS.json"
         save_json(append_file,events)
@@ -652,6 +692,7 @@ def main():
            pool_successful_scanned_segments=len(pool["completed"]),
            pool_successful_covered_blocks=sum(b-a+1 for a,b in pool["completed"]),
            calculator_addresses=calc["addresses"],calculator_complete=calc["complete"],
+           calculator_historical_code_boundaries=calc["effective_start_by_calculator"],
            calculator_first_gaps={k:v[:20] for k,v in calc["gaps"].items()},
            cap_warning="Calculator address roster comes from pool updates only if those updates were scanned")
         save_json(out/"COVERAGE_MANIFEST.json",gap_report)
@@ -662,7 +703,7 @@ def main():
            declared_end_block=pool["end"],rpc_head_at_run=pool["head"],
            pool_deployment_code_boundary=pool["deployment"],
            effective_pool_census_start=pool["effective_start"],
-           effective_calculator_census_start=calc["effective_start"],
+           effective_calculator_census_start=calc["effective_start_by_calculator"],
            pool_log_calls=pool["log_calls"],pool_event_logs=len(pool["logs"]),
            calculator_log_calls=calc["log_calls"],
            calculator_event_logs=len(calc["logs"]),
@@ -676,8 +717,10 @@ def main():
            trade_action_rows=len(panel),
            exact_prestate_rows=0,
            identification_status=audit["status"],
-           provider_failures=dict(rpc.failures),
-           provider_calls=dict(rpc.calls),
+           configured_archive_failures=dict(rpc.failures),
+           configured_archive_calls=dict(rpc.calls),
+           public_indexer_failures=dict(log_rpc.failures),
+           public_indexer_calls=dict(log_rpc.calls),
            proxy_code_provenance="Gate27 separately verified for two versions; not all tx",
            fee_formula_replay="Gate25 two exemplars, not automatically every panel row",
            project_id_and_exact_prestate="NOT_INFERRED_FROM_BLOCK_END",
