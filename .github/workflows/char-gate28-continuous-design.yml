@@ -1,0 +1,37 @@
+name: CHAR Gate 28 continuous global fee design
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [research/char-refi-standalone]
+    paths:
+      - '.github/workflows/char-gate28-continuous-design.yml'
+      - 'scripts/gate28_continuous_global.py'
+      - 'tests/test_gate28_continuous_global.py'
+      - 'docs/GATE28_CONTINUOUS_GLOBAL_DESIGN.md'
+permissions:
+  contents: read
+jobs:
+  continuous-global:
+    name: Full scale-domain regime and constraint analysis
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Test global search bounds and distinct economic regimes
+        run: |
+          set -euo pipefail
+          mkdir -p results/gate28
+          python3 -m unittest discover -s tests -p 'test_gate28_continuous_global.py' -v 2>&1 | tee results/gate28/UNIT_TESTS.log
+      - name: Search continuous scale for each Gate21 benchmark state
+        run: |
+          set -euo pipefail
+          python3 scripts/gate28_continuous_global.py --out results/gate28 2>&1 | tee results/gate28/CONTINUOUS_SEARCH.log
+      - name: Preserve all synthetic calculations and incomplete certifications
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: char-gate28-continuous-design
+          path: results/gate28/**
+          if-no-files-found: warn
