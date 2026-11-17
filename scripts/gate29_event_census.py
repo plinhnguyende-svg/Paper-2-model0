@@ -13,6 +13,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+from decimal import Decimal, localcontext
 import subprocess
 import time
 import urllib.request
@@ -263,7 +264,7 @@ def receipt_row(rpc, txhash, discovered, topics):
         "amount_raw":matched.get("amount_raw"),
         "actual_fee_raw":matched.get("fee_raw"),
         "effective_fee_rate":(
-            str(matched["fee_raw"]/matched["amount_raw"])
+            str(Decimal(matched["fee_raw"])/Decimal(matched["amount_raw"]))
             if matched.get("amount_raw") and matched.get("fee_raw") is not None else None),
         "receipt_accounting_status":matched["status"],
         "receipt_checks":matched.get("checks",{}),
@@ -483,7 +484,7 @@ def write_panel(out, rows, event_rows,topics):
                 "actor":record.get("actor") if matched else action.get("actor"),
                 "amount_raw":amount,
                 "actual_fee_raw":fee,
-                "effective_fee_rate":str(fee/amount) if fee is not None and amount else None,
+                "effective_fee_rate":str(Decimal(fee)/Decimal(amount)) if fee is not None and amount else None,
                 "fee_events_in_transaction":len(feeevents),
                 "fee_attribution":("UNAMBIGUOUS_CANONICAL_RECEIPT"
                                    if matched else "NOT_RECONCILED_OR_MULTIACTION"),
