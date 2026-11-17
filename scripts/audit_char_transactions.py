@@ -84,7 +84,7 @@ def main():
     args=p.parse_args()
     if not 0<=args.start<=args.end:p.error('invalid block interval')
     out=Path(args.out);out.mkdir(parents=True,exist_ok=True)
-    summary=dict(chain_id=8453,pool=POOL,collected_at_utc=datetime.now(timezone.utc).isoformat(),selection='bounded indexer mint/burn candidates, then declared-range log fallback; not representative',
+    summary=dict(chain_id=8453,pool=POOL,collected_at_utc=datetime.now(timezone.utc).isoformat(),selection='bounded explorer or asset-transfer indexer candidates through declared end block, then selected-window logs; not representative',
                  status='NOT_VERIFIED',candidates=[],scan_status='NOT_SCANNED',
                  prestate_and_formula='OPEN',producer_attribution='UNVERIFIED',economic_calibration='NOT_ESTABLISHED')
     rpc=None
@@ -95,6 +95,23 @@ def main():
         candidates,errors=explorer_candidates(out);summary['explorer_errors']=errors
         summary['indexer_candidates']=len(candidates)
         rpc=Rpc(out)
+        summary['asset_transfer_discovery']=[]
+        # Provider indexer nominates hashes only; actual RPC receipts decide evidence.
+        if not candidates:
+            for order in ['desc','asc']:
+                try:
+                    params=dict(fromBlock='0x0',toBlock=hex(args.end),contractAddresses=[POOL],
+                                fromAddress=ZERO,category=['erc20'],excludeZeroValue=True,
+                                maxCount='0x64',order=order,withMetadata=False)
+                    result,provider=rpc.call('alchemy_getAssetTransfers',[params])
+                    save(f'asset_transfer_{order}.json',dict(provider=provider,query=params,result=result))
+                    for item in result.get('transfers',[]):
+                        txhash=item.get('hash','')
+                        if re.fullmatch(r'0x[0-9a-fA-F]{64}',txhash) and txhash not in candidates:
+                            candidates.append(txhash)
+                    summary['asset_transfer_discovery'].append(dict(order=order,candidates=len(candidates),has_more=bool(result.get('pageKey'))))
+                except Exception:
+                    summary['asset_transfer_discovery'].append(dict(order=order,status='UNAVAILABLE'))
         if not candidates:
             summary['scan_status']='IN_PROGRESS';complete=True
             # Same declared historical window, with wider batches and method failover.
