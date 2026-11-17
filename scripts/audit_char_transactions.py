@@ -57,8 +57,10 @@ def main():
                               toBlock=hex(end), topics=[TRANSFER])])
                 save(f"logs_{start}_{end}.json", batch)
                 logs.extend(batch)
+                print(f"Scanned blocks {start}-{end}: {len(batch)} logs", flush=True)
             except Exception as exc:
                 summary["scan_errors"].append(dict(start=start, end=end, error=type(exc).__name__))
+                break  # Preserve partial evidence promptly instead of repeating an unavailable RPC.
         logs.sort(key=lambda x: tuple(int(x[k],16) for k in ("blockNumber","transactionIndex","logIndex")))
         hashes = []
         for log in logs:
@@ -66,6 +68,7 @@ def main():
                 hashes.append(log["transactionHash"])
         summary["mint_burn_candidates_in_successfully_scanned_ranges"] = len(hashes)
         for txhash in hashes[:3]:
+            print(f"Collecting candidate {txhash}", flush=True)
             row = dict(tx_hash=txhash, status="CANDIDATE_ONLY", fee_matching="NOT_DONE")
             summary["candidates"].append(row)
             try:
@@ -115,7 +118,7 @@ def main():
         manifest = {f.name:hashlib.sha256(f.read_bytes()).hexdigest() for f in out.iterdir() if f.is_file() and f.name != "SHA256.json"}
         save("SHA256.json", manifest)
         print(json.dumps(summary, indent=2))
-    return 1 if summary.get("error") or summary["scan_errors"] else 0
+    return 1 if summary.get("error") or summary["scan_errors"] or any("error" in r for r in summary["candidates"]) else 0
 
 if __name__ == "__main__":
     raise SystemExit(main())
