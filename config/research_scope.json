@@ -1,5 +1,5 @@
 {
-  "version": "Gate21-2026-11-17",
+  "version": "Gate27-2026-11-17",
   "topic": "Economic Design of Smart-Contract Carbon Pools: Participation, Value Allocation, and Upstream Transmission in Biochar Supply Chains",
   "central_object": "executable fee, transaction and allocation rules; not a generic blockchain benefit term",
   "research_questions": {
@@ -11,7 +11,30 @@
   "designer_scope": "Gate21 known-state depositFeeScale choice in a 30-value approved menu; normative output objective, assumed HHI limit and recipient token budget",
   "commitment": "one-horizon commitment assumed; not implied by owner permissions",
   "conditional_contrast": "Gate19 all-output routing can reduce output; this is not robust to Gate20 partial allocation and is not the general headline",
-  "offchain_primitives": ["commercial beta", "baseline procurement price", "pre-production liquidity", "outside market access", "physical verification yield"],
-  "open_questions": ["continuous or function-space fee optimum", "governance equilibrium", "source-bytecode equivalence", "whole-pool transaction matching", "producer attribution", "commercial pass-through identification", "causal environmental effect", "literature novelty closure"],
-  "primary_reader_entry": "docs/GATE21_RESEARCH_MAP_VI.md"
+  "offchain_primitives": [
+    "commercial beta",
+    "baseline procurement price",
+    "pre-production liquidity",
+    "outside market access",
+    "physical verification yield"
+  ],
+  "open_questions": [
+    "governance equilibrium",
+    "full historical proxy-upgrade and contract-version census beyond sampled versions",
+    "whole-pool transaction matching",
+    "producer attribution",
+    "commercial pass-through identification",
+    "causal environmental effect",
+    "literature novelty closure",
+    "global continuous or function-space fee optimum with participation and budget constraints"
+  ],
+  "primary_reader_entry": "docs/GATE21_RESEARCH_MAP_VI.md",
+  "source_provenance": {
+    "fee_calculator": "Sourcify verified exact Standard JSON for Solidity 0.8.19; independent complete runtime rebuild matches on-chain bytecode at historical Base block 13826401",
+    "pool_implementation_early": "Sourcify verified exact Standard JSON for Solidity 0.8.14; independent complete runtime rebuild matches deployed after immutable substitution",
+    "pool_implementation_later": "Sourcify verified exact Standard JSON for Solidity 0.8.14; independent complete runtime rebuild matches deployed after immutable substitution",
+    "historical_upgrade": "One observed proxy Upgraded(address) event at block 28317185; full upgrade census not established",
+    "scope": "three specifically observed runtime contracts; not all historical deployments or fee configurations"
+  },
+  "continuous_equilibrium_scope": "Gate27 strictly interior, unsaturated active partial equilibrium: inverse fee-scale a(y) with global participation check against Gate20 solver; synthetic local fee-budget crossing, not globally proven continuous designer optimum"
 }
