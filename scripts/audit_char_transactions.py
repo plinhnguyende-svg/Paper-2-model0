@@ -98,8 +98,10 @@ def main():
         if not candidates:
             summary['scan_status']='IN_PROGRESS';complete=True
             # Same declared historical window, with wider batches and method failover.
-            for start in range(args.start,args.end+1,10000):
-                end=min(start+9999,args.end)
+            windows=[(args.start,args.end,10000),(13000000,14000000,10000)]
+            summary['discovery_windows']=[dict(start=a,end=b,chunk=c) for a,b,c in windows]
+            chunks=[(a,min(a+c-1,b)) for lo,b,c in windows for a in range(lo,b+1,c)]
+            for start,end in chunks:
                 try:
                     logs,provider=rpc.call('eth_getLogs',[dict(address=POOL,fromBlock=hex(start),toBlock=hex(end),topics=[TRANSFER])])
                     save(f'logs_{start}_{end}.json',dict(provider=provider,logs=logs))
