@@ -50,13 +50,13 @@ contract HistoricalCHARExactFeeForkTest {
     bytes32 private constant REDEMPTION_TX =
         0xc676a373fc6cec24dd9f744f04a7dd7f975921370be6270185006b25fbd4f034;
     address private constant DEPOSIT_TOKEN =
-        0x99f5f445ff1f537686f2fbc32d43653c7c786645;
+        0x99F5F445ff1F537686f2fbc32d43653C7C786645;
     address private constant REDEMPTION_TOKEN =
-        0xf20cb470acda661ab02de3b7be43894e2ade0b1c;
+        0xf20CB470AcdA661Ab02De3B7be43894e2aDe0B1c;
     address private constant FEE_RECIPIENT_0 =
-        0x7d3e7bbd4e9e4e1507ff4a4b488934abfbacb801;
+        0x7d3E7BbD4e9e4e1507FF4a4b488934abfbAcb801;
     address private constant FEE_RECIPIENT_1 =
-        0xca07b1b8a2d6767178f7f7038a3c54ac949d9440;
+        0xcA07B1B8A2D6767178F7f7038A3c54aC949d9440;
 
     event HistoricalPrestate(
         bytes32 indexed transactionHash,
