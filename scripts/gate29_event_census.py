@@ -279,6 +279,31 @@ def receipt_row(rpc, txhash, discovered, topics):
     return record,receipt
 
 
+def first_deployed_pool_block(rpc,head):
+    """Historical code-existence boundary, assuming no code selfdestruct/redeploy.
+    Verified only as first nonempty eth_getCode within [0,head] on archive RPC.
+    """
+    last=rpc.call("eth_getCode",[POOL,hex(head)])
+    if not isinstance(last,str) or last=="0x":
+        raise ValueError("POOL_NOT_DEPLOYED_AT_CHECKPOINT")
+    first=rpc.call("eth_getCode",[POOL,hex(0)])
+    if first!="0x":
+        return dict(block=0, status="CODE_EXISTS_AT_GENESIS_UNEXPECTED")
+    a,b=0,head
+    while a+1<b:
+        m=(a+b)//2
+        mid=rpc.call("eth_getCode",[POOL,hex(m)])
+        if mid!="0x":
+            b=m
+        else:
+            a=m
+    if rpc.call("eth_getCode",[POOL,hex(b-1)])!="0x" or \
+       rpc.call("eth_getCode",[POOL,hex(b)])=="0x":
+        raise ValueError("DEPLOYMENT_BOUNDARY_NOT_VERIFIED")
+    return dict(block=b,status="VERIFIED_FIRST_NONEMPTY_CODE_BOUNDARY",
+                semantics="does not prove absence of rare selfdestruct/redeploy history")
+
+
 def census(rpc,out,args,topics):
     journal=out/"POOL_SCAN_JOURNAL.jsonl"
     rawlog=out/"POOL_LOGS.jsonl"
@@ -289,9 +314,11 @@ def census(rpc,out,args,topics):
     successes=covered_intervals(existing)
     head=as_int(rpc.call("eth_blockNumber",[]))
     end=head if args.end_block is None else min(head,args.end_block)
-    if args.start_block>end:
+    deployment=first_deployed_pool_block(rpc,end)
+    effective_start=max(args.start_block,deployment["block"])
+    if effective_start>end:
         raise ValueError("START_BEYOND_HEAD")
-    groups=missing_intervals(args.start_block,end,successes)
+    groups=missing_intervals(effective_start,end,successes)
     work=[]
     for a,b in groups:
         for left in range(a,b+1,args.chunk):
@@ -342,8 +369,9 @@ def census(rpc,out,args,topics):
         unique[key]=log
     raw=ensure_consistency(list(unique.values()))
     complete=covered_intervals(load_jsonl(journal))
-    gaps=missing_intervals(args.start_block,end,complete)
-    return dict(logs=raw,head=head,end=end,log_calls=calls,
+    gaps=missing_intervals(effective_start,end,complete)
+    return dict(logs=raw,head=head,end=end,
+                effective_start=effective_start,deployment=deployment,log_calls=calls,
                 log_failures=failures,completed=complete,gaps=gaps,
                 complete=(len(gaps)==0),elapsed_sec=round(time.monotonic()-started,2),
                 log_budget_exhausted=(len(work)>0))
@@ -368,13 +396,14 @@ def scan_calculator_events(rpc,out,args,topics, pool_logs):
     # Keep calculator scan budget separate; leave any gaps explicit.
     head=as_int(rpc.call("eth_blockNumber",[]))
     end=head if args.end_block is None else min(head,args.end_block)
+    scan_start=max(args.start_block,min((as_int(x["blockNumber"]) for x in pool_logs),default=0))
     queries=0
     start_at=time.monotonic()
     allowed={topics[k] for k in CALC_EVENTS}
     for address in all_addresses:
         records=[x for x in earlier if x.get("address")==address]
         completed=covered_intervals(records)
-        for start,endgap in missing_intervals(args.start_block,end,completed):
+        for start,endgap in missing_intervals(scan_start,end,completed):
             for left in range(start,endgap+1,args.chunk):
                 work=[(left,min(endgap,left+args.chunk-1))]
                 while work and queries<args.max_calc_log_calls and \
@@ -414,8 +443,9 @@ def scan_calculator_events(rpc,out,args,topics, pool_logs):
     cover={}
     for address in all_addresses:
         records=[x for x in load_jsonl(journal) if x.get("address")==address]
-        cover[address]=missing_intervals(args.start_block,end,covered_intervals(records))
+        cover[address]=missing_intervals(scan_start,end,covered_intervals(records))
     return dict(logs=final,addresses=all_addresses,gaps=cover,
+                effective_start=scan_start,
                 complete=all(not x for x in cover.values()),log_calls=queries)
 
 
@@ -615,7 +645,8 @@ def main():
                                   pool,calc)
         save_json(out/"IDENTIFICATION_AUDIT.json",audit)
         gap_report=dict(
-           start=args.start_block,end=pool["end"],head=pool["head"],
+           start=pool["effective_start"],end=pool["end"],head=pool["head"],
+           pool_deployment_code_boundary=pool["deployment"],
            pool_complete=pool["complete"],pool_missing_count=len(pool["gaps"]),
            pool_first_missing_ranges=pool["gaps"][:60],
            pool_successful_scanned_segments=len(pool["completed"]),
@@ -629,6 +660,9 @@ def main():
                 calc["complete"] and receipts["unprocessed_candidates"]==0 else
                 "PARTIAL_CENSUS_NOT_FULL_HISTORY"),
            declared_end_block=pool["end"],rpc_head_at_run=pool["head"],
+           pool_deployment_code_boundary=pool["deployment"],
+           effective_pool_census_start=pool["effective_start"],
+           effective_calculator_census_start=calc["effective_start"],
            pool_log_calls=pool["log_calls"],pool_event_logs=len(pool["logs"]),
            calculator_log_calls=calc["log_calls"],
            calculator_event_logs=len(calc["logs"]),
