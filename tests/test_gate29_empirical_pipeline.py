@@ -111,7 +111,7 @@ class CensusTests(unittest.TestCase):
                 "address":contract,
                 "topics":[TRANSFER,"0x"+sender[2:].rjust(64,"0"),
                           "0x"+recipient[2:].rjust(64,"0")],
-                "data":"0x"+format(n,"064x")}
+                "data":"0x"+format(n,"064x"),"logIndex":"0x1"}
         dep={"address":POOL,"topics":[td],
              "data":"0x"+token[2:].rjust(64,"0")+format(amount,"064x")}
         receipt={"logs":[dep,flow(POOL,ZERO,actor,amount),
