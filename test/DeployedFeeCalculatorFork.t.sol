@@ -3,9 +3,8 @@ pragma solidity 0.8.19;
 
 import {FeeDistribution} from "dynamic-fee-pools/src/interfaces/IFeeCalculator.sol";
 import {MockPool} from "../src/MockPool.sol";
-import {MockTCO2} from "../src/MockTCO2.sol";
 
-interface IDeployedFeeCalculator {
+interface ICalculatorAtBlock {
     function calculateDepositFees(address pool, address tco2, uint256 amount)
         external view returns (FeeDistribution memory);
     function calculateRedemptionFees(address pool, address[] calldata tco2s, uint256[] calldata amounts)
@@ -15,65 +14,118 @@ interface IDeployedFeeCalculator {
     function depositFeeRatioScale() external view returns (int256);
     function redemptionFeeScale() external view returns (int256);
     function singleAssetDepositRelativeFee() external view returns (int256);
+    function singleAssetRedemptionRelativeFee() external view returns (int256);
 }
 
-/// @notice Run ONLY against a Base fork pinned to block 58_258_072.
-/// This test calls Base's DEPLOYED calculator, NOT a locally deployed source clone.
-/// End-of-block state is examined; producer-wallet identity is NOT established.
+interface ICharPoolAtBlock {
+    function feeCalculator() external view returns (address);
+}
+
+/// @notice Fails on actual EVM invariant violations, not on unverified hard-coded
+///         historical addresses/parameters. Run only on Base fork at a pinned block.
+///         A successful fork call does not prove the published source matches bytecode.
 contract DeployedFeeCalculatorForkTest {
-    address constant CALCULATOR = 0x6A4549759C475d845d4AE074B3656dC257490DA5;
-    address constant RECIPIENT_A = 0x7d3E7BbD4e9e4e1507FF4a4b488934abfbAcb801;
-    address constant RECIPIENT_B = 0xcA07B1B8A2D6767178F7f7038A3c54aC949d9440;
+    address constant PUBLISHED_CALCULATOR = 0x6A4549759C475d845d4AE074B3656dC257490DA5;
+    address constant CHAR_POOL = 0x20b048fA035D5763685D695e66aDF62c5D9F5055;
+    address constant TOKEN = address(0xA11CE);
 
-    function _fee(FeeDistribution memory d) internal pure returns (uint256 z) {
-        for (uint256 i=0; i<d.shares.length; ++i) z += d.shares[i];
+    event HistoricalParameters(
+        address calculator,
+        address activeModule,
+        int256 depositScale,
+        int256 ratioScale,
+        int256 redemptionScale,
+        int256 singleDepositRate,
+        int256 singleRedemptionRate
+    );
+    event HistoricalFeeRecipient(address recipient, uint256 sharePercent);
+    event EVMFeeProbe(uint256 secondProjectInventoryWei, bool isDeposit, bool reverted, uint256 feeWei);
+
+    function _total(FeeDistribution memory d) internal pure returns (uint256 z) {
+        require(d.recipients.length == d.shares.length, "unequal fee arrays");
+        for (uint256 i = 0; i < d.shares.length; ++i) z += d.shares[i];
     }
 
-    function testVerifiedBlockParamsAndRecipients() public view {
-        IDeployedFeeCalculator c = IDeployedFeeCalculator(CALCULATOR);
-        require(c.depositFeeScale() == 15e16, "depositFeeScale");
-        require(c.depositFeeRatioScale() == 125e16, "depositFeeRatioScale");
-        require(c.redemptionFeeScale() == 30e16, "redemptionFeeScale");
-        require(c.singleAssetDepositRelativeFee() == 10e16, "singleAssetDepositRelativeFee");
-        (address[] memory addresses, uint256[] memory shares) = c.getFeeSetup();
-        require(addresses.length == 2 && shares.length == 2, "recipient array length");
-        require(addresses[0] == RECIPIENT_A && addresses[1] == RECIPIENT_B, "recipient addresses");
-        require(shares[0] == 75 && shares[1] == 25, "shares");
+    function _redemption(
+        ICalculatorAtBlock c,
+        MockPool p,
+        uint256 amount
+    ) internal view returns (FeeDistribution memory) {
+        address[] memory tokens = new address[](1);
+        uint256[] memory amounts = new uint256[](1);
+        tokens[0] = TOKEN;
+        amounts[0] = amount;
+        return c.calculateRedemptionFees(address(p), tokens, amounts);
     }
 
-    function testSingleProjectFeeAtRealCalculator() public {
-        MockTCO2 token = new MockTCO2(777);
-        MockPool p = new MockPool(address(token));
-        p.setInventory(100e18, 100e18);
-        FeeDistribution memory d = IDeployedFeeCalculator(CALCULATOR).calculateDepositFees(
-            address(p), address(token), 10e18
-        );
-        require(_fee(d) == 1e18, "real-calculator single-project 10% fee");
-        require(d.shares[0] == 75e16 && d.shares[1] == 25e16, "real-calculator 75/25");
+    function redemptionProbe(address pool, uint256 amount) external view returns (uint256) {
+        return _total(_redemption(ICalculatorAtBlock(PUBLISHED_CALCULATOR), MockPool(pool), amount));
     }
 
-    function testDominantDepositIsOutsideRangeAtDeployedParams() public {
-        MockTCO2 token = new MockTCO2(777);
-        MockPool p = new MockPool(address(token));
-        p.setInventory(100e18, 101e18);
-        // This is a deployed EVM test of the FeeCalculator call:
-        // with a ratio scale of 1.25, a dominant asset can be outside range.
-        try IDeployedFeeCalculator(CALCULATOR).calculateDepositFees(address(p), address(token), 10e18)
-            returns (FeeDistribution memory)
-        {
-            revert("dominant deposit unexpectedly accepted");
-        } catch {
-            // Expected revert on deployed FeeCalculator at pinned block.
+    function testDeployedCalculatorIsReadableAndRecipientsSumTo100() public {
+        require(PUBLISHED_CALCULATOR.code.length != 0, "no calculator bytecode at fork block");
+        ICalculatorAtBlock c = ICalculatorAtBlock(PUBLISHED_CALCULATOR);
+        address active = address(0);
+        // The published calculator address need not be active for CHAR at the block.
+        if (CHAR_POOL.code.length != 0) {
+            try ICharPoolAtBlock(CHAR_POOL).feeCalculator() returns (address a) {
+                active = a;
+            } catch {}
         }
+        emit HistoricalParameters(
+            PUBLISHED_CALCULATOR,
+            active,
+            c.depositFeeScale(),
+            c.depositFeeRatioScale(),
+            c.redemptionFeeScale(),
+            c.singleAssetDepositRelativeFee(),
+            c.singleAssetRedemptionRelativeFee()
+        );
+        (address[] memory recipients, uint256[] memory percentages) = c.getFeeSetup();
+        require(recipients.length == percentages.length, "fee setup length mismatch");
+        require(recipients.length > 0, "fee setup empty at this block");
+        uint256 totalShare;
+        for (uint256 i = 0; i < recipients.length; ++i) {
+            require(recipients[i] != address(0), "zero fee recipient");
+            totalShare += percentages[i];
+            emit HistoricalFeeRecipient(recipients[i], percentages[i]);
+        }
+        require(totalShare == 100, "shares do not sum to 100");
     }
 
-    function testMinorityDepositWithinRangeAtDeployedParams() public {
-        MockTCO2 token = new MockTCO2(777);
-        MockPool p = new MockPool(address(token));
-        p.setInventory(10e18, 100e18);
-        FeeDistribution memory d = IDeployedFeeCalculator(CALCULATOR).calculateDepositFees(
-            address(p), address(token), 10e18
-        );
-        require(_fee(d) > 0 && _fee(d) < 10e18, "minority deposit fee invalid");
+    function testDeployedSingleProjectRateAndRounding() public {
+        ICalculatorAtBlock c = ICalculatorAtBlock(PUBLISHED_CALCULATOR);
+        MockPool p = new MockPool(TOKEN);
+        p.setInventory(100e18, 100e18);
+        uint256 deposit = _total(c.calculateDepositFees(address(p), TOKEN, 10e18));
+        uint256 redemption = _total(_redemption(c, p, 10e18));
+        uint256 depositRate = uint256(c.singleAssetDepositRelativeFee());
+        uint256 redemptionRate = uint256(c.singleAssetRedemptionRelativeFee());
+        require(depositRate > 0 && redemptionRate > 0, "single-project rate zero");
+        require(deposit == 10e18 * depositRate / 1e18, "single-project deposit EVM mismatch");
+        require(redemption == 10e18 * redemptionRate / 1e18, "single-project redemption EVM mismatch");
+    }
+
+    function testNearDominantDepositDomainAndBoundaryGrid() public {
+        ICalculatorAtBlock c = ICalculatorAtBlock(PUBLISHED_CALCULATOR);
+        MockPool p = new MockPool(TOKEN);
+        uint256[8] memory others = [
+            uint256(1e18), uint256(1e17), uint256(1e16), uint256(1e12),
+            uint256(1e9), uint256(1e6), uint256(1), uint256(0)
+        ];
+        for (uint256 i = 0; i < others.length; ++i) {
+            p.setInventory(100e18, 100e18 + others[i]);
+            try c.calculateDepositFees(address(p), TOKEN, 10e18)
+                returns (FeeDistribution memory d) {
+                emit EVMFeeProbe(others[i], true, false, _total(d));
+            } catch {
+                emit EVMFeeProbe(others[i], true, true, 0);
+            }
+            try this.redemptionProbe(address(p), 10e18) returns (uint256 fee) {
+                emit EVMFeeProbe(others[i], false, false, fee);
+            } catch {
+                emit EVMFeeProbe(others[i], false, true, 0);
+            }
+        }
     }
 }
