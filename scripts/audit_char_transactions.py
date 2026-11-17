@@ -1,127 +1,159 @@
 #!/usr/bin/env python3
-"""Read-only Base transaction discovery. No broadcast or private key required."""
+"""Read-only discovery with provider failover and narrow receipt reconciliation."""
 import argparse
+import csv
+from datetime import datetime,timezone
 import hashlib
 import json
 import os
-import re
 from pathlib import Path
+import re
 import subprocess
+import time
+import urllib.parse
+import urllib.request
+from char_receipt_accounting import POOL,TRANSFER,ZERO,reconcile
+
+SIGNATURES={
+ 'DepositFeePaid':'DepositFeePaid(address,uint256)',
+ 'RedeemFeePaid':'RedeemFeePaid(address,uint256)',
+ 'RedeemFeeBurnt':'RedeemFeeBurnt(address,uint256)',
+ 'Deposited':'Deposited(address,uint256)',
+ 'Redeemed':'Redeemed(address,address,uint256)'}
 
 
-POOL = "0x20b048fa035d5763685d695e66adf62c5d9f5055"
-TRANSFER = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"
-ZERO = "0x" + "0" * 64
+class Rpc:
+    def __init__(self,out):
+        self.out=out;self.failures=[];self.providers=[];self.cursor=0
+        configured=os.environ.get('BASE_RPC_URL')
+        choices=([('configured',configured)] if configured else [])+[
+            ('publicnode','https://base-rpc.publicnode.com'),('base_public','https://mainnet.base.org')]
+        for name,url in choices:
+            try:
+                if int(self.direct(url,'eth_chainId',[]),16)!=8453:raise ValueError('wrong chain')
+                self.providers.append((name,url))
+            except Exception as exc:self.failures.append(dict(provider=name,method='eth_chainId',error=type(exc).__name__))
+        if not self.providers:raise RuntimeError('no verified Base RPC')
 
-def transfers(receipt):
-    rows = []
-    for log in receipt.get("logs", []):
-        topics = log.get("topics", [])
-        if len(topics) == 3 and topics[0].lower() == TRANSFER and len(log.get("data", "")) == 66:
-            rows.append(dict(token=log["address"].lower(), sender="0x"+topics[1][-40:],
-                             recipient="0x"+topics[2][-40:], amount_wei=str(int(log["data"], 16)),
-                             log_index=int(log["logIndex"], 16)))
-    return rows
+    def direct(self,url,method,params):
+        r=subprocess.run(['cast','rpc',method,*[json.dumps(v) for v in params],'--rpc-url',url],capture_output=True,text=True,timeout=18)
+        if r.returncode:
+            detail=r.stderr.split('HTTP diagnostics:')[0].replace(url,'[RPC_REDACTED]')
+            detail=re.sub(r'https?://\S+','[URL_REDACTED]',detail)[:600]
+            raise RuntimeError(detail)
+        return json.loads(r.stdout)
+
+    def call(self,method,params):
+        for offset in range(len(self.providers)):
+            i=(self.cursor+offset)%len(self.providers);name,url=self.providers[i]
+            try:
+                value=self.direct(url,method,params);self.cursor=i
+                return value,name
+            except Exception as exc:
+                self.failures.append(dict(provider=name,method=method,error=type(exc).__name__,detail=str(exc)[:600]))
+        raise RuntimeError('all verified providers failed method')
+
+
+def explorer_candidates(out,pages=4):
+    """Indexer nominates txs; RPC receipts remain the source for accounting."""
+    base=f'https://base.blockscout.com/api/v2/tokens/{POOL}/transfers'
+    candidates=[];params={};errors=[]
+    for page in range(pages):
+        url=base+('?' + urllib.parse.urlencode(params) if params else '')
+        try:
+            req=urllib.request.Request(url,headers={'User-Agent':'CHAR-research-readonly/1.0','Accept':'application/json'})
+            with urllib.request.urlopen(req,timeout=15) as response:data=json.load(response)
+            (out/f'explorer_page_{page}.json').write_text(json.dumps(data,indent=2)+'\n')
+            for item in data.get('items',[]):
+                tx=item.get('transaction_hash')
+                sender=(item.get('from') or {}).get('hash','').lower()
+                recipient=(item.get('to') or {}).get('hash','').lower()
+                if tx and re.fullmatch(r'0x[0-9a-fA-F]{64}',tx) and (sender==ZERO or recipient==ZERO) and tx not in candidates:candidates.append(tx)
+            params=data.get('next_page_params')
+            if not params or len(candidates)>=12:break
+            time.sleep(.3)
+        except Exception as exc:
+            errors.append(dict(page=page,error=type(exc).__name__));break
+    return candidates,errors
+
 
 def main():
-    p = argparse.ArgumentParser()
-    p.add_argument("--start", type=int, required=True)
-    p.add_argument("--end", type=int, required=True)
-    p.add_argument("--out", required=True)
-    args = p.parse_args()
-    if not 0 <= args.start <= args.end:
-        p.error("invalid block interval")
-    out = Path(args.out)
-    out.mkdir(parents=True, exist_ok=True)
-    rpc = os.environ.get("BASE_RPC_URL") or "https://mainnet.base.org"
-    summary = dict(chain_id=8453, pool=POOL, start=args.start, end=args.end,
-                   selection="first three distinct CHAR mint/burn txs ordered by block, tx index, log index",
-                   evidence_status="UNVERIFIED", candidates=[], scan_errors=[],
-                   economic_status="producer identity, cash realization, beta and additional removal unverified")
-    def save(name, data):
-        (out/name).write_text(json.dumps(data, indent=2)+"\n")
-    def call(method, params):
-        result = subprocess.run(["cast", "rpc", method, *[json.dumps(v) for v in params],
-                                 "--rpc-url", rpc], capture_output=True, text=True, timeout=25)
-        if result.returncode:
-            detail = re.sub(r"https?://[^\\s]+", "[URL_REDACTED]", result.stderr.replace(rpc, "[RPC_REDACTED]"))
-            save("RPC_ERROR.json", dict(method=method, detail=detail[:1500]))
-            raise RuntimeError(f"{method}: cast RPC failed")
-        return json.loads(result.stdout)
+    p=argparse.ArgumentParser()
+    p.add_argument('--start',type=int,required=True);p.add_argument('--end',type=int,required=True)
+    p.add_argument('--out',required=True);p.add_argument('--max-receipts',type=int,default=12)
+    args=p.parse_args()
+    if not 0<=args.start<=args.end:p.error('invalid block interval')
+    out=Path(args.out);out.mkdir(parents=True,exist_ok=True)
+    summary=dict(chain_id=8453,pool=POOL,collected_at_utc=datetime.now(timezone.utc).isoformat(),selection='bounded indexer mint/burn candidates, then declared-range log fallback; not representative',
+                 status='NOT_VERIFIED',candidates=[],scan_status='NOT_SCANNED',
+                 prestate_and_formula='OPEN',producer_attribution='UNVERIFIED',economic_calibration='NOT_ESTABLISHED')
+    rpc=None
+    def save(name,data):(out/name).write_text(json.dumps(data,indent=2)+'\n')
     try:
-        if int(call("eth_chainId", []), 16) != 8453:
-            raise RuntimeError("wrong chain")
-        logs = []
-        # Chunked scan, with explicit gaps. Empty window is not evidence of no activity elsewhere.
-        for start in range(args.start, args.end+1, 1000):
-            end = min(start+999, args.end)
-            try:
-                batch = call("eth_getLogs", [dict(address=POOL, fromBlock=hex(start),
-                              toBlock=hex(end), topics=[TRANSFER])])
-                save(f"logs_{start}_{end}.json", batch)
-                logs.extend(batch)
-                print(f"Scanned blocks {start}-{end}: {len(batch)} logs", flush=True)
-            except Exception as exc:
-                summary["scan_errors"].append(dict(start=start, end=end, error=type(exc).__name__))
-                break  # Preserve partial evidence promptly instead of repeating an unavailable RPC.
-        logs.sort(key=lambda x: tuple(int(x[k],16) for k in ("blockNumber","transactionIndex","logIndex")))
-        hashes = []
-        for log in logs:
-            if len(log["topics"]) == 3 and ZERO in log["topics"][1:] and log["transactionHash"] not in hashes:
-                hashes.append(log["transactionHash"])
-        summary["mint_burn_candidates_in_successfully_scanned_ranges"] = len(hashes)
-        for txhash in hashes[:3]:
-            print(f"Collecting candidate {txhash}", flush=True)
-            row = dict(tx_hash=txhash, status="CANDIDATE_ONLY", fee_matching="NOT_DONE")
-            summary["candidates"].append(row)
-            try:
-                tx = call("eth_getTransactionByHash", [txhash])
-                receipt = call("eth_getTransactionReceipt", [txhash])
-                block = call("eth_getBlockByNumber", [tx["blockNumber"], False])
-                assert receipt["transactionHash"] == txhash
-                assert receipt["blockHash"] == block["hash"] == tx["blockHash"]
-                assert receipt["transactionIndex"] == tx["transactionIndex"]
-                assert block["transactions"][int(tx["transactionIndex"],16)] == txhash
-                save(txhash+"_tx.json", tx)
-                save(txhash+"_receipt.json", receipt)
-                save(txhash+"_block.json", block)
-                save(txhash+"_erc20_transfers.json", transfers(receipt))
-                row.update(block=int(tx["blockNumber"],16), tx_index=int(tx["transactionIndex"],16),
-                           receipt_status=int(receipt["status"],16), selector=tx["input"][:10],
-                           erc20_transfers=len(transfers(receipt)), receipt_identity="MATCHED")
-                # Native node tracing uses exact intra-block execution, if supported.
-                for tracer in ("callTracer", "prestateTracer"):
-                    try:
-                        trace = call("debug_traceTransaction", [txhash, dict(tracer=tracer, timeout="20s")])
-                        save(txhash+"_"+tracer+".json", trace)
-                        row[tracer] = "CAPTURED_NOT_YET_RECONCILED"
-                    except Exception:
-                        row[tracer] = "UNAVAILABLE"
-                # Deliberately omit --quick: cast run replays earlier txs in the block.
-                # Successful command execution alone does not establish fee/transfer equality.
+        topics={name:subprocess.check_output(['cast','keccak',signature],text=True).strip() for name,signature in SIGNATURES.items()}
+        save('EVENT_SIGNATURES.json',dict(zip(SIGNATURES.values(),topics.values())))
+        candidates,errors=explorer_candidates(out);summary['explorer_errors']=errors
+        summary['indexer_candidates']=len(candidates)
+        rpc=Rpc(out)
+        if not candidates:
+            summary['scan_status']='IN_PROGRESS';complete=True
+            # Same declared historical window, with wider batches and method failover.
+            for start in range(args.start,args.end+1,10000):
+                end=min(start+9999,args.end)
                 try:
-                    result = subprocess.run(["cast","run",txhash,"--rpc-url",rpc],
-                                            capture_output=True, text=True, timeout=65)
-                    text = (result.stdout+"\n"+result.stderr).replace(rpc, "[RPC_REDACTED]")
-                    (out/(txhash+"_replay.txt")).write_text(text)
-                    row["cast_run_exit"] = result.returncode
-                except subprocess.TimeoutExpired:
-                    row["cast_run"] = "TIMEOUT"
-                except FileNotFoundError:
-                    row["cast_run"] = "UNAVAILABLE"
-            except Exception as exc:
-                row["error"] = type(exc).__name__
-        summary["evidence_status"] = "COLLECTED_REQUIRES_FEE_AND_TRANSFER_RECONCILIATION" if summary["candidates"] else "NO_CANDIDATES_IN_SCANNED_RANGES"
-        if summary["scan_errors"]:
-            summary["evidence_status"] += "_INCOMPLETE_SCAN"
-    except Exception as exc:
-        summary["error"] = type(exc).__name__
+                    logs,provider=rpc.call('eth_getLogs',[dict(address=POOL,fromBlock=hex(start),toBlock=hex(end),topics=[TRANSFER])])
+                    save(f'logs_{start}_{end}.json',dict(provider=provider,logs=logs))
+                    for log in logs:
+                        if len(log.get('topics',[]))==3 and ('0x'+'0'*64) in log['topics'][1:]:
+                            if log['transactionHash'] not in candidates:candidates.append(log['transactionHash'])
+                    if len(candidates)>=12:
+                        summary['scan_status']='BOUNDED_SAMPLE_EARLY_STOP';break
+                except Exception:
+                    complete=False;summary['scan_status']='INCOMPLETE_RPC_FAILURE';break
+            else:summary['scan_status']='DECLARED_WINDOW_COMPLETE' if complete else 'INCOMPLETE_RPC_FAILURE'
+        else:summary['scan_status']='INDEXER_SAMPLE_NOT_FULL_HISTORY'
+        for txhash in candidates[:args.max_receipts]:
+            row=dict(tx_hash=txhash,status='CANDIDATE_ONLY');summary['candidates'].append(row)
+            try:
+                tx,txprovider=rpc.call('eth_getTransactionByHash',[txhash])
+                receipt,provider=rpc.call('eth_getTransactionReceipt',[txhash])
+                block,_=rpc.call('eth_getBlockByNumber',[receipt['blockNumber'],False])
+                assert receipt['transactionHash']==txhash and receipt['blockHash']==tx['blockHash']==block['hash']
+                assert receipt['transactionIndex']==tx['transactionIndex']
+                assert block['transactions'][int(receipt['transactionIndex'],16)]==txhash
+                assert int(receipt['status'],16)==1
+                save(txhash+'_tx.json',tx);save(txhash+'_receipt.json',receipt);save(txhash+'_block.json',block)
+                accounting=reconcile(receipt,topics);save(txhash+'_accounting.json',accounting)
+                row.update(block=int(receipt['blockNumber'],16),tx_index=int(receipt['transactionIndex'],16),
+                           provider=provider,status=accounting['status'],kind=accounting.get('kind'),
+                           amount_raw=accounting.get('amount_raw'),fee_raw=accounting.get('fee_raw'),
+                           canonical_identity='MATCHED')
+                print(json.dumps(row),flush=True)
+                if accounting['status']=='RECEIPT_ACCOUNTING_MATCH' and 'trace_attempt' not in summary:
+                    summary['trace_attempt']={}
+                    for tracer in ['callTracer','prestateTracer']:
+                        try:
+                            trace,traceprovider=rpc.call('debug_traceTransaction',[txhash,dict(tracer=tracer,timeout='10s')])
+                            save(txhash+'_'+tracer+'.json',dict(provider=traceprovider,result=trace))
+                            summary['trace_attempt'][tracer]='CAPTURED_NOT_RECONCILED'
+                        except Exception:summary['trace_attempt'][tracer]='UNAVAILABLE'
+                if sum(r['status']=='RECEIPT_ACCOUNTING_MATCH' for r in summary['candidates'])>=3:break
+            except Exception as exc:row['error']=type(exc).__name__
+        matched=sum(r['status']=='RECEIPT_ACCOUNTING_MATCH' for r in summary['candidates'])
+        summary['matched_receipts']=matched
+        summary['status']='RECEIPT_SAMPLE_ACCOUNTING_PASS_FULL_RECONCILIATION_OPEN' if matched else 'NO_MATCHED_RECEIPT_SAMPLE'
+    except Exception as exc:summary['error']=type(exc).__name__
     finally:
-        save("SUMMARY.json", summary)
-        manifest = {f.name:hashlib.sha256(f.read_bytes()).hexdigest() for f in out.iterdir() if f.is_file() and f.name != "SHA256.json"}
-        save("SHA256.json", manifest)
-        print(json.dumps(summary, indent=2))
-    return 1 if summary.get("error") or summary["scan_errors"] or any("error" in r for r in summary["candidates"]) else 0
+        if rpc:save('RPC_FAILURES.json',rpc.failures)
+        fields=['tx_hash','block','tx_index','kind','amount_raw','fee_raw','provider','canonical_identity','status']
+        with (out/'ACTUAL_RECEIPT_ACCOUNTING.csv').open('w') as f:
+            writer=csv.DictWriter(f,fieldnames=fields);writer.writeheader()
+            for row in summary['candidates']:
+                if row['status']=='RECEIPT_ACCOUNTING_MATCH':writer.writerow({k:row.get(k) for k in fields})
+        save('SUMMARY.json',summary)
+        save('SHA256.json',{f.name:hashlib.sha256(f.read_bytes()).hexdigest() for f in out.iterdir() if f.is_file() and f.name!='SHA256.json'})
+        print(json.dumps(summary,indent=2))
+    return 0 if summary.get('matched_receipts',0)>0 else 1
 
-if __name__ == "__main__":
-    raise SystemExit(main())
+
+if __name__=='__main__':raise SystemExit(main())
