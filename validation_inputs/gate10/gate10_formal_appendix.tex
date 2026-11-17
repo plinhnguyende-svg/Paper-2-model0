@@ -1,0 +1,162 @@
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb,amsthm,booktabs,hyperref}
+\newtheorem{proposition}{Proposition}
+\newtheorem{remark}{Remark}
+\title{Gate 10: Mathematical Appendix\\Smart-Contract Fee Boundaries in Biochar Carbon Credit Pools}
+\author{Research working appendix --- not a deployed-contract certification}
+\date{16 November 2026}
+\begin{document}
+\maketitle
+\section{Primitives and institutional scope}
+A carbon-removal project indexed by $j$ has $q_j$ underlying credit units in a tokenized pool with total underlying quantity $Q=\sum_j q_j>0$. A credit holder may deposit $x>0$ project-specific units or redeem $x$ units, subject to $0<x\leq q_j$ for a redemption. Let $D(q_j,Q,x)$ and $R(q_j,Q,x)$ denote deposit and redemption fees, respectively, denominated in the pool's fungible token, under the \emph{mathematical formulas} published for Toucan's open-source fee calculator. These are not the same as exact EVM computations; integer rounding, pauses, nonpositive fee reverts, seeding, and upgrade rights are not represented here.
+
+For $0\leq q_j<Q$, deposit fee scale $0.18$ and ratio scale $0.99$ give
+\begin{align}
+D(q_j,Q,x)=0.18\Bigg[&q_j\log_{10}\left(1-0.99\frac{q_j}{Q}\right)\\
+&-(q_j+x)\log_{10}\left(1-0.99\frac{q_j+x}{Q+x}\right)\Bigg].\nonumber
+\end{align}
+For $x\leq q_j<Q$ and $x<Q$, the redemption fee (before the source's numerical negative-fee fallback) is
+\begin{align}
+R(q_j,Q,x)=0.30\Bigg[&(q_j-x)\log_{10}\left(\frac{q_j-x}{Q-x}+0.10\right)\\
+&-q_j\log_{10}\left(\frac{q_j}{Q}+0.10\right)+x\log_{10}(1.10)\Bigg].\nonumber
+\end{align}
+In the branch $q_j=Q$, the source explicitly sets $D(q_j,Q,x)=0.10x$ and $R(q_j,Q,x)=0.10x$. The source also uses a $30\%$ dust fallback if the computed redemption fee is negative in fixed-point arithmetic.
+
+\section{Exact real-number boundary jumps}
+\begin{proposition}[Discontinuous single-project fee boundary]
+Let $q_j>x>0$ be fixed and let $Q=q_j+\varepsilon$ with $\varepsilon>0$. Then
+\[
+\lim_{\varepsilon\downarrow0}D(q_j,q_j+\varepsilon,x)=0.36x,\quad
+\lim_{\varepsilon\downarrow0}R(q_j,q_j+\varepsilon,x)=0,
+\]
+while $D(q_j,q_j,x)=R(q_j,q_j,x)=0.10x$ in the source's special branch.
+\end{proposition}
+\begin{proof}
+For $Q=q_j+\varepsilon$, both $q_j/Q$ and $(q_j+x)/(Q+x)$ converge to $1$ as $\varepsilon\downarrow0$. Since $1-0.99=0.01>0$ and $\log_{10}$ is continuous on $(0,\infty)$,
+\begin{align*}
+\lim_{\varepsilon\downarrow0}D(q_j,q_j+\varepsilon,x)
+&=0.18\left[q_j\log_{10}(0.01)-(q_j+x)\log_{10}(0.01)\right]\\
+&=0.18(-x)(-2)=0.36x.
+\end{align*}
+Since $q_j>x$, the second ratio $(q_j-x)/(Q-x)$ also converges to $1$, and all logarithm arguments in the redemption formula converge to $1.10$. Hence
+\begin{align*}
+\lim_{\varepsilon\downarrow0}R(q_j,q_j+\varepsilon,x)
+&=0.30\left[(q_j-x)\log_{10}(1.10)-q_j\log_{10}(1.10)+x\log_{10}(1.10)\right]\\
+&=0.
+\end{align*}
+The values at $\varepsilon=0$ follow from the distinct $q_j=Q$ conditional branch. Therefore the jumps are $+0.26x$ for deposit (interior minus boundary) and $-0.10x$ for redemption.
+\end{proof}
+
+\begin{remark}
+The preceding proposition is a statement about ideal real-valued fee formulas. It is not a theorem about feasibility of depositing $\varepsilon$ in an actual EVM execution. Source code separately requires the calculated fee to be nonzero, and 59.18 fixed-point logarithms are rounded. In production, credit eligibility and the seeding threshold may matter as well.
+\end{remark}
+
+\begin{proposition}[Quadratic fee for introducing a small minority project]
+For an entirely absent project, with $q_j=0$ and pool total $Q>0$, the fee to deposit $\varepsilon>0$ under the interior formula is asymptotically
+\[
+D(0,Q,\varepsilon)
+=\frac{0.18\cdot0.99}{\ln10}\frac{\varepsilon^2}{Q}+o(\varepsilon^2),
+\qquad\text{as }\varepsilon\downarrow0.
+\]
+\end{proposition}
+\begin{proof}
+Setting $q_j=0$ and $x=\varepsilon$ gives
+\[
+D(0,Q,\varepsilon)=-0.18\varepsilon\log_{10}\left(1-0.99\frac{\varepsilon}{Q+\varepsilon}\right).
+\]
+Let $z=0.99\varepsilon/(Q+\varepsilon)$. Since $\ln(1-z)=-z+o(z)$ as $z\to0$, and $\log_{10}(1-z)=\ln(1-z)/(\ln10)$,
+\begin{align*}
+D(0,Q,\varepsilon)
+&=\frac{0.18\varepsilon}{\ln10}\left(0.99\frac{\varepsilon}{Q+\varepsilon}+o(\varepsilon)\right)\\
+&=\frac{0.18\cdot0.99}{\ln10}\frac{\varepsilon^2}{Q}+o(\varepsilon^2).
+\end{align*}
+\end{proof}
+
+
+\begin{proposition}[Second-order vanishing of interior redemption fees]
+Fix $q_j>x>0$ and let $Q=q_j+\varepsilon$ with $\varepsilon\downarrow0$. In the positive-fee real-valued region, with $L=1.10$,
+\[
+R(q_j,q_j+\varepsilon,x)=\frac{0.30x}{q_j(q_j-x)\ln10}
+\left(\frac{1}{L}-\frac{1}{2L^2}\right)\varepsilon^2+O(\varepsilon^3).
+\]
+\end{proposition}
+\begin{proof}
+For $z>0$, expand the expression $z\log_{10}(z/(z+\varepsilon)+0.10)$ around $\varepsilon=0$. Since
+\[
+\frac{z}{z+\varepsilon}=1-\frac{\varepsilon}{z}+\frac{\varepsilon^2}{z^2}+O(\varepsilon^3)
+\]
+and $\ln(L+t)=\ln L+t/L-t^2/(2L^2)+O(t^3)$,
+\[
+z\log_{10}\left(\frac{z}{z+\varepsilon}+0.10\right)
+=z\log_{10}L-\frac{\varepsilon}{L\ln10}
++\frac{\varepsilon^2}{z\ln10}\left(\frac{1}{L}-\frac{1}{2L^2}\right)+O(\varepsilon^3).
+\]
+Apply this expansion first at $z=q_j-x$ and then at $z=q_j$, subtract the latter from the former, and add $x\log_{10}L$ as required by the redemption formula. The order-zero and first-order terms cancel, leaving
+\[
+R(q_j,q_j+\varepsilon,x)=\frac{0.30\varepsilon^2}{\ln10}
+\left(\frac{1}{q_j-x}-\frac{1}{q_j}\right)
+\left(\frac{1}{L}-\frac{1}{2L^2}\right)+O(\varepsilon^3).
+\]
+Since $(q_j-x)^{-1}-q_j^{-1}=x/[q_j(q_j-x)]$, the expression follows.
+\end{proof}
+\begin{remark}
+The quadratic decay makes binary floating-point subtraction unreliable near the single-project state. High-precision real-number validation is necessary but insufficient: PRBMath SD59x18 quantization may round values to zero or trigger a different EVM revert or dust branch. This is one reason why the provided Foundry test records the entire boundary grid instead of presupposing EVM behavior.
+\end{remark}
+
+\section{Two alternative designs}
+\begin{proposition}[Anchored smooth boundary rule]
+For each $\tau>0$, define $m_j=Q-q_j$ and
+\[
+\lambda_\tau(q_j,Q)=\frac{m_j}{m_j+\tau Q},\quad Q>0.
+\]
+Let $f_L^a(q_j,Q,x)$ be the legacy source mathematical fee for action $a\in\{D,R\}$. Define
+\[
+f_{S,\tau}^a(q_j,Q,x)=\left(1-\lambda_\tau(q_j,Q)\right)0.10x+\lambda_\tau(q_j,Q)f_L^a(q_j,Q,x).
+\]
+For fixed $q_j>x>0$, the smoothed fee is continuous at $Q=q_j$ in the ordinary real-number formula, with limiting and boundary fee $0.10x$ for either action.
+\end{proposition}
+\begin{proof}
+As $Q\downarrow q_j$, $m_j=Q-q_j\downarrow0$. Since $\tau Q\to\tau q_j>0$, $\lambda_\tau\to0$. By Proposition 1, $f_L^D$ and $f_L^R$ have finite respective right limits $0.36x$ and $0$, so their products with $\lambda_\tau$ vanish. Consequently $f_{S,\tau}^a\to0.10x$. At $Q=q_j$, $\lambda_\tau=0$ by definition, so the fee also equals $0.10x$.
+\end{proof}
+
+\begin{remark}
+A smooth real-number formula need not be a robust Solidity implementation. If an implementation calls the original fee calculator, the call may revert at near-zero values before the blend occurs. A production implementation must avoid relying on a fee-positive-only intermediate oracle, and test integer precision and gas costs explicitly.
+\end{remark}
+
+A second candidate replaces the $Q=q_j>0$ branch with a deposit fee $0.36x$ and a redemption fee $\delta x$, $\delta=0.001$. It uses the source deposit formula in interior states and $\max\{\delta x,R(q_j,Q,x)\}$ for redemption when $q_j<Q$. This is continuous at the single-project boundary when $R$ is given by its standard interior expression. It does not claim continuity at the empty-pool seeding boundary, fixed-point dust fallback or other source reverts.
+
+\section{Execution fee caps and individual utility}
+Let $P>0$ denote an exogenous price per pool token. Let $K_D=Px-v_{ij}x$ be a depositor's gross proceeds from a zero-fee transaction relative to their outside option, and $K_R=u_{ij}x-Px$ the analogous gross gain for a redeemer. An actual transaction fee $F$ is uncertain when the participant sends a call because other actors may change pool inventory before inclusion. A submitted call with cap $m$ succeeds if $F\leq m$ and all other preconditions hold. Let $g_s$ and $g_f$ be costs of successful and unsuccessful calls, respectively.
+
+\begin{proposition}[Utility-consistent cap under exogenous execution fee]
+Suppose $F$ has a distribution that is not affected by the participant's chosen cap $m$, all non-fee execution constraints are satisfied, and the participant is not simultaneously manipulating inclusion order. Conditional on submitting, an optimal acceptance threshold is
+\[
+m^*=\frac{K-g_s+g_f}{P},
+\]
+where $K=K_D$ for deposit and $K=K_R$ for redemption. If the participant deterministically recaptures fraction $\alpha\in[0,1)$ of the fee upon success, the threshold is
+\[
+m_\alpha^*=\frac{K-g_s+g_f}{(1-\alpha)P}.
+\]
+A negative threshold indicates that no positive-fee transaction should be accepted under these assumptions.
+\end{proposition}
+\begin{proof}
+If the participant accepts a fee $F=f$, the success payoff is $K-(1-\alpha)Pf-g_s$. If they reject it, the failure payoff is $-g_f$. Acceptance is optimal exactly if
+\[
+K-(1-\alpha)Pf-g_s\geq -g_f.
+\]
+Rearranging gives $f\leq(K-g_s+g_f)/[(1-\alpha)P]$. Under the assumption that the conditional distribution of $F$ is exogenous with respect to $m$, implementing this set of acceptable fees maximizes expected payoff conditional on submitting. If a smart contract requires a strictly positive cap, the resulting choice must satisfy that additional technical constraint.
+\end{proof}
+
+\section{Financial value allocation, without producer attribution}
+For a normal source-code deposit with $x$ underlying credits and source fee $D$, a participant receives $x-D$ minted pool tokens while the fee recipients are allocated shares summing to $D$. Total new pool tokens are therefore $x$. For redemption, the user expends $x$ pool tokens to obtain $x$ project-specific underlying credits and pays $R$ pool tokens as a fee; $x$ tokens are burned and fee allocation transfers are booked separately, possibly including a burn recipient. These are accountancy identities conditional on successful contract execution, not evidence of cash financing of upstream producers.
+
+If fee recipient $r$ receives a fraction $\alpha_r$ of fees and $\sum_r\alpha_r=1$, the accounting identity is $\sum_r\alpha_rF=F$ before integer rounding. In actual Solidity, integer remainders are given to the first recipient. Without validated wallet-owner mappings, one cannot identify any recipient as a biochar producer or measure its external financing.
+
+\section{References and scope}
+\begin{itemize}
+\item Toucan Protocol, \emph{FeeCalculator.sol}, public repo commit \texttt{7aef954dae1bd0c7add4ed66d216251110521b16}: \url{https://github.com/ToucanProtocol/dynamic-fee-pools}.
+\item Toucan Protocol, \emph{Pool.sol}, \emph{PoolWithFeeCalculatorERC20.sol}: \url{https://github.com/ToucanProtocol/contracts}.
+\item PRBMath SD59x18: \url{https://github.com/PaulRBerg/prb-math}.
+\end{itemize}
+\end{document}

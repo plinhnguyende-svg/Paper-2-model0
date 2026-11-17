@@ -1,0 +1,4 @@
+scenario,selected_policy,cap_buffer,volume_ratio,gains_ratio,delta_HHI,delta_completion,fee_ratio,holdout_constraints_pass
+exact_single_project_SYNTHETIC,extension_0.001,0.3,1.02252141338382,1.0288007213147499,0.003903374780148794,0.01830442303448343,0.999771538026219,True
+near_monopoly_SYNTHETIC,extension_0.001,0.3,1.0246387426664711,1.0277995171078875,0.016086277792216386,0.011322542193771046,1.0271498202306744,True
+published_7project_snapshot,extension_0.001,0.3,1.0,1.0,0.0,0.0,1.0,True

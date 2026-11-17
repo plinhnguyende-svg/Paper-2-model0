@@ -1,0 +1,18 @@
+{
+  "status": "FINITE_ENUMERATION_SYNTHETIC",
+  "scenarios": 36,
+  "policies": 7,
+  "amount_actions": 6,
+  "winners": [
+    "source_default_real"
+  ],
+  "optimum_volume": "260",
+  "arithmetic": "Decimal real-formula evaluation; NOT EVM",
+  "scope": "exhaustive over seven specified policies and six amount choices per independent scenario; no continuum or strategic equilibrium theorem",
+  "allocation_design": "fixed disjoint recipients; allocation shares are not optimized",
+  "constraints": {
+    "HHI_increase": ".02",
+    "aggregate_fee_floor": ".70"
+  },
+  "empirical_effect": "NOT_IDENTIFIED"
+}

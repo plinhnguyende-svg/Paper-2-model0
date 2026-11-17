@@ -1,0 +1,226 @@
+% Gate 9 formal appendix: source-code benchmark, not a verified deployed state.
+% Ready to paste into an Overleaf document or compile as a standalone article.
+\documentclass[11pt]{article}
+\usepackage[a4paper,margin=1in]{geometry}
+\usepackage{amsmath,amssymb,amsthm,booktabs}
+\usepackage{hyperref}
+\newtheorem{proposition}{Proposition}
+\newtheorem{remark}{Remark}
+\title{Formal Appendix: Programmable Fees, Execution Constraints, and Value Allocation\\in a Tokenized Biochar Credit Pool}
+\author{Gate 9 working research notes --- not empirical results}
+\date{16 November 2026}
+\begin{document}
+\maketitle
+
+\section{Institutional and model scope}
+The economic mechanism is grounded in the public Toucan CHAR fee calculator and pool smart-contract source. We do not claim that public source-code defaults exactly match the fee parameters active at any given block on Base or Celo. In particular, seeding thresholds, eligibility, pausability, caps, fee exemptions, upgradeability, fixed-point rounding, and alternative fee modules are excluded from the mathematical baseline. All economic valuations and arrival processes in the computational experiment are synthetic, not transaction-level observations.
+
+Let $J\ge2$ be the number of eligible certified carbon-removal projects; $q_j\ge0$ denotes the underlying TCO$_2$ inventory attributable to project $j$, and $Q=\sum_{k=1}^Jq_k>0$ is the total inventory. The unit of inventory is one ton of certified CO$_2$ removal represented as an eligible TCO$_2$ token. A participant can deposit $x>0$ units of project $j$ or redeem $x\le q_j$ units. The pool token CHAR is assigned an exogenous numeraire price $P>0$ per token. The outside value of an eligible certificate to seller $i$ is $v_{ij}$ per unit; the redemption value to buyer $i$ is $u_{ij}$ per unit. These valuations are not directly observable from a public on-chain deposit log.
+
+\section{Source-code baseline fee rules}
+For $q_j<Q$, the public default deposit fee in CHAR tokens is
+\begin{equation}
+\label{eq:deposit}
+D_j(q_j,Q,x)=0.18\left[
+q_j\log_{10}\!\left(1-0.99\frac{q_j}{Q}\right)
+-(q_j+x)\log_{10}\!\left(1-0.99\frac{q_j+x}{Q+x}\right)
+\right].
+\end{equation}
+For $q_j<Q$, $x\le q_j$, and $x<Q$, the public default redemption fee is
+\begin{equation}
+\label{eq:redeem}
+\begin{aligned}
+R_j(q_j,Q,x)=0.30\bigg[&(q_j-x)\log_{10}\!\left(\frac{q_j-x}{Q-x}+0.10\right)\\
+&-q_j\log_{10}\!\left(\frac{q_j}{Q}+0.10\right)
++x\log_{10}(1.10)\bigg].
+\end{aligned}
+\end{equation}
+The source-code special case is $D_j(Q,Q,x)=0.10x$ and $R_j(Q,Q,x)=0.10x$. A negative intermediate redemption fee can trigger a dust-fee fallback of $0.30x$. The analytical propositions below concern the continuous formula branches where the fallback does not bind, and clarify the special branch separately.
+
+\section{Individual participation}
+\begin{proposition}[Profitability thresholds conditional on execution]
+\label{prop:participation}
+Suppose seller $i$ is not a configured fee recipient and an eligible deposit of $x$ can execute. The deposit is individually profitable if and only if
+\begin{equation}
+\frac{D_j(q_j,Q,x)}{x}\le 1-\frac{v_{ij}}{P}-\frac{g_s}{Px}.
+\end{equation}
+Likewise, redemption is individually profitable to buyer $i$ if and only if
+\begin{equation}
+\frac{R_j(q_j,Q,x)}{x}\le\frac{u_{ij}}{P}-1-\frac{g_s}{Px}.
+\end{equation}
+\end{proposition}
+\begin{proof}
+A deposit yields $x-D_j(q_j,Q,x)$ CHAR and sacrifices $x$ outside certificates. Its net numeraire payoff is $P[x-D_j(q_j,Q,x)]-v_{ij}x-g_s$. Setting this expression nonnegative, dividing by $Px>0$, and rearranging gives the first inequality. For redemption, the buyer receives assets valued at $u_{ij}x$, pays $x+R_j(q_j,Q,x)$ CHAR and incurs $g_s$. Its payoff is $u_{ij}x-P[x+R_j(q_j,Q,x)]-g_s$. Dividing the corresponding nonnegative inequality by $Px>0$ gives the second claim.
+\end{proof}
+
+\section{Concentration effects}
+Define the Herfindahl index $H=\sum_{j=1}^J (q_j/Q)^2$. The next result is a deterministic accounting identity, not a behavioral effect of fees.
+\begin{proposition}[Exact changes in project-inventory HHI]
+\label{prop:hhi}
+A successful deposit of $x$ units into project $j$ changes concentration by
+\begin{equation}
+H^{D}_j-H=
+\frac{2Qx\left(\frac{q_j}{Q}-H\right)+x^2(1-H)}{(Q+x)^2}.
+\end{equation}
+A successful redemption $x\le q_j$ with $x<Q$ changes concentration by
+\begin{equation}
+H^{R}_j-H=
+\frac{-2Qx\left(\frac{q_j}{Q}-H\right)+x^2(1-H)}{(Q-x)^2}.
+\end{equation}
+Consequently, a deposit raises HHI precisely when
+\begin{equation}
+\frac{q_j}{Q}>H-\frac{x(1-H)}{2Q},
+\end{equation}
+whereas a redemption lowers HHI precisely when
+\begin{equation}
+\frac{q_j}{Q}>H+\frac{x(1-H)}{2Q}.
+\end{equation}
+\end{proposition}
+\begin{proof}
+By definition $Q^2H=\sum_{k=1}^Jq_k^2$. Deposit changes the numerator to $\sum_{k=1}^Jq_k^2+2q_jx+x^2$ and the denominator to $(Q+x)^2$. Therefore,
+\[
+\begin{aligned}
+H_j^D-H
+&=\frac{Q^2H+2q_jx+x^2-H(Q+x)^2}{(Q+x)^2}\\
+&=\frac{2q_jx+x^2-2HQx-Hx^2}{(Q+x)^2}\\
+&=\frac{2Qx(q_j/Q-H)+x^2(1-H)}{(Q+x)^2}.
+\end{aligned}
+\]
+For redemption, the numerator becomes $\sum_{k=1}^Jq_k^2-2q_jx+x^2$ and the denominator becomes $(Q-x)^2$. Hence,
+\[
+\begin{aligned}
+H_j^R-H
+&=\frac{Q^2H-2q_jx+x^2-H(Q-x)^2}{(Q-x)^2}\\
+&=\frac{-2q_jx+x^2+2HQx-Hx^2}{(Q-x)^2}\\
+&=\frac{-2Qx(q_j/Q-H)+x^2(1-H)}{(Q-x)^2}.
+\end{aligned}
+\]
+The sign statements follow from multiplying both inequalities by their strictly positive denominators and dividing by $2Qx>0$.
+\end{proof}
+
+\section{Local monotonicity and a source-code boundary discontinuity}
+\begin{proposition}[Small-trade marginal fee schedules]
+\label{prop:marginal}
+For strictly multi-project states $0<q_j/Q<1$ and the continuous fee branches, the first-order deposit fee per credit, as $x\downarrow0$, equals
+\begin{equation}
+\mu_D(s)=0.18\left[-\log_{10}(1-0.99s)+\frac{0.99s(1-s)}{(1-0.99s)\ln10}\right],
+\quad s=\frac{q_j}{Q}.
+\end{equation}
+The redemption fee per credit is
+\begin{equation}
+\mu_R(s)=0.30\left[\log_{10}\left(\frac{1.10}{s+0.10}\right)-\frac{s(1-s)}{(s+0.10)\ln10}\right].
+\end{equation}
+Moreover,
+\begin{equation}
+\frac{d\mu_D(s)}{ds}
+=\frac{0.18(0.99)(1-s)(2-0.99s)}{(1-0.99s)^2\ln10}>0
+\end{equation}
+and
+\begin{equation}
+\frac{d\mu_R(s)}{ds}
+=-\frac{0.30(1-s)(s+0.20)}{(s+0.10)^2\ln10}<0,
+\qquad 0<s<1.
+\end{equation}
+\end{proposition}
+\begin{proof}
+For deposit, let $s(x)=(q_j+x)/(Q+x)$. Then $s(0)=q_j/Q$ and $s'(0)=(Q-q_j)/Q^2=(1-s)/Q$. Differentiation of equation \eqref{eq:deposit} with respect to $x$ at $x=0$ gives
+\[
+\left.\frac{\partial D_j(q_j,Q,x)}{\partial x}\right|_{x=0}
+=0.18\left[-\log_{10}(1-0.99s)+\frac{0.99s(1-s)}{(1-0.99s)\ln10}\right].
+\]
+For redemption, $s_R(x)=(q_j-x)/(Q-x)$ satisfies $s_R(0)=s$ and $s_R'(0)=(q_j-Q)/Q^2=-(1-s)/Q$. Differentiating \eqref{eq:redeem} gives the stated $\mu_R(s)$. Direct differentiation of the two one-variable expressions, combining fractions over a common positive denominator, yields the stated derivatives. Their signs follow from $0<s<1$ and the positive coefficients.
+\end{proof}
+
+\begin{proposition}[Discontinuity at the single-project boundary]
+\label{prop:boundary}
+Fix $q>x>0$. For the public default parameters and the continuous fee branches, as the inventory $\varepsilon>0$ of other projects vanishes,
+\begin{equation}
+\lim_{\varepsilon\downarrow0}D_j(q,q+\varepsilon,x)=0.36x,
+\qquad
+\lim_{\varepsilon\downarrow0}R_j(q,q+\varepsilon,x)=0.
+\end{equation}
+At the exact single-project state $\varepsilon=0$, however, the published special branch sets both fees to $0.10x$.
+\end{proposition}
+\begin{proof}
+For every $\varepsilon>0$, $q<q+\varepsilon$, hence the dynamic deposit rule \eqref{eq:deposit} applies. Both ratios $q/(q+\varepsilon)$ and $(q+x)/(q+\varepsilon+x)$ converge to one. By continuity of the base-ten logarithm at $1-0.99=0.01>0$,
+\[
+\begin{aligned}
+\lim_{\varepsilon\downarrow0}D_j(q,q+\varepsilon,x)
+&=0.18\big[q\log_{10}(0.01)-(q+x)\log_{10}(0.01)\big]\\
+&=-0.18x\log_{10}(0.01)=0.36x.
+\end{aligned}
+\]
+For redemption, $q/(q+\varepsilon)\to1$ and $(q-x)/(q+\varepsilon-x)\to1$. Thus
+\[
+\begin{aligned}
+\lim_{\varepsilon\downarrow0}R_j(q,q+\varepsilon,x)
+&=0.30\big[(q-x)\log_{10}(1.10)-q\log_{10}(1.10)+x\log_{10}(1.10)\big]\\
+&=0.
+\end{aligned}
+\]
+The source-code equality branch explicitly assigns $0.10x$ in both cases when $q=Q$; this establishes the discontinuity.
+\end{proof}
+
+\begin{remark}
+This proposition concerns the *mathematical source-code rule*, not a claim of exploitation or actual transaction behavior. Executability of a tiny auxiliary deposit also depends on fee positivity after 18-decimal rounding, allowlisting, token availability, seeding thresholds, supply caps, gas, administrative configuration, and deployed contract version. A sufficiently small amount may not be executable despite the limiting argument.
+\end{remark}
+
+\section{Revenue allocation and supply-accounting identity}
+\begin{proposition}[Token-flow accounting]
+Suppose a deposit of $x$ incurs CHAR fee $D_j$, and fee shares satisfy $\alpha_r\ge0$, $\sum_r\alpha_r=1$. Ignoring integer rounding, a standard successful pool deposit mints $x-D_j$ CHAR to the depositor and $\alpha_rD_j$ CHAR to each recipient. Total CHAR supply therefore rises by exactly $x$. A standard successful redemption requiring $x+R_j$ CHAR transfers $R_j$ to the configured fee allocation (before any designated burn-address transfer) and burns $x$ CHAR; the token supply falls by exactly $x$.
+\end{proposition}
+\begin{proof}
+For deposit, total new CHAR is
+\[
+(x-D_j)+\sum_r\alpha_rD_j=x-D_j+D_j\sum_r\alpha_r=x.
+\]
+For redemption, the user's $x+R_j$ token expenditure is accounted for by transfer of fee $R_j$ and burning the remaining $x$. No newly issued CHAR is needed for this transfer; total issued supply falls by $x$. In the actual Solidity implementation, the first fee recipient obtains rounding residual units, and a redemption share may be sent to a designated burn address rather than a recipient.
+\end{proof}
+
+\section{Optimal execution fee cap under exogenous state changes}
+Assume the participant has already decided to submit a transaction, and the realized fee $F$ depends on the future pool state at execution. A successful submission incurs execution cost $g_s$, whereas a fee-cap rejection incurs $g_f$. Other failure sources are ignored in the following result.
+\begin{proposition}[Conditional optimal \texttt{maxFee}]
+If a seller is not a fee recipient, $P$ and $v_{ij}$ are fixed and the realized fee distribution is continuous with locally positive density, then conditional expected utility is maximized by a cap equal to
+\begin{equation}
+m^*_D=x\left(1-\frac{v_{ij}}P\right)-\frac{g_s-g_f}{P}
+\end{equation}
+whenever this quantity is admissible and lies in the support of the fee distribution. For a buyer, the corresponding cap is
+\begin{equation}
+m^*_R=x\left(\frac{u_{ij}}P-1\right)-\frac{g_s-g_f}{P}.
+\end{equation}
+Outside the fee support, the optimal cap can be placed at an appropriate support boundary; the separate submission decision compares conditional expected utility with zero.
+\end{proposition}
+\begin{proof}
+Let $\varphi(F)$ denote the density of the realized fee. The expected payoff of a seller conditional on sending is
+\[
+EU_D(m)=\int_0^m\big[P(x-F)-v_{ij}x-g_s\big]\varphi(F)\,dF
+-\int_m^{\infty}g_f\varphi(F)\,dF.
+\]
+By the fundamental theorem of calculus, at an interior differentiability point,
+\[
+\frac{dEU_D(m)}{dm}=
+\left[P(x-m)-v_{ij}x-g_s+g_f\right]\varphi(m).
+\]
+With $\varphi(m)>0$ and $P>0$, the sign changes from positive to negative at
+\[
+Pm=Px-v_{ij}x-g_s+g_f,
+\]
+which gives the stated seller cap. The same argument for a buyer uses successful payoff $u_{ij}x-P(x+F)-g_s$ and yields $Pm=u_{ij}x-Px-g_s+g_f$. Since the bracket is strictly decreasing in $m$, the resulting interior point is a maximum. 
+\end{proof}
+
+\begin{remark}
+If a trader receives a documented fraction $\alpha_i\in[0,1)$ of their own fee back in CHAR, the gross payoff sensitivity is $P(1-\alpha_i)$ per unit of charged fee and the analogous interior caps divide the corresponding gross surplus by $P(1-\alpha_i)$. Such self-recapture is a hypothetical participation mechanism until producer wallet identities and actual fee shares are verified.
+\end{remark}
+
+\section{What is and is not established}
+The derived propositions are about a source-grounded mechanism under listed feasibility assumptions. They do not establish a global Nash equilibrium, causal adoption effect, actual economic benefit of blockchain over a centralized marketplace, identity of any recipient, realized project royalty, or additional physical carbon removal. Computational findings are reproducible using the accompanying Python files. Field validation requires deployed-contract state, historical events and independent project-wallet attribution.
+
+\section*{Sources}
+\begin{itemize}
+\item \url{https://github.com/ToucanProtocol/dynamic-fee-pools/blob/main/src/FeeCalculator.sol}
+\item \url{https://github.com/ToucanProtocol/contracts/blob/main/contracts/pools/Pool.sol}
+\item \url{https://github.com/ToucanProtocol/contracts/blob/main/contracts/pools/PoolWithFeeCalculatorERC20.sol}
+\item \url{https://docs.toucan.earth/developers/smart-contracts/pool-contracts}
+\item \url{https://app.toucan.earth/pools}
+\end{itemize}
+\end{document}

@@ -1,0 +1,30 @@
+{
+  "inputs": [
+    {
+      "filename": "Pasted text (4)(1).txt",
+      "sha256": "33cfe3febdad130cdbea44513a3240390c06647ff43a0a0b6bb13bfc071727a6",
+      "role": "user supplied summary; not original executable appendix"
+    },
+    {
+      "filename": "Pasted text (5)(1).txt",
+      "sha256": "2957c8ce167920ac6b70111d1c7fb2c4ce88b8f0b168581cfd4063d9f6c3d8f7",
+      "role": "user supplied summary; not original executable appendix"
+    },
+    {
+      "filename": "Pasted text (6)(1).txt",
+      "sha256": "c610aacb77b2b281a630d22049ef6c9915c745c2ca1caff799e1e1ff5f37c010",
+      "role": "user supplied summary; not original executable appendix"
+    },
+    {
+      "filename": "Pasted text (7)(1).txt",
+      "sha256": "1c75679c03a7df7cd56b44c660efafc858cf66c908ce0820e4131cc3bad53c08",
+      "role": "user supplied summary; not original executable appendix"
+    },
+    {
+      "filename": "Pasted text (8)(1).txt",
+      "sha256": "909527e00bdf9689633522a8de6cc2ff7ae05971db86e242529d978404d55e3d",
+      "role": "user supplied summary; not original executable appendix"
+    }
+  ],
+  "recovered_originals": "All five Gates 9-13 archives recovered; Python and LaTeX retained under validation_inputs; main workflows replayed. See original_replay_manifest.json."
+}
