@@ -65,6 +65,10 @@ def main():
                 status['http_status']=exc.code
                 raise
             if payload.get('error') or 'result' not in payload:raise RuntimeError('RPC_RESPONSE_ERROR')
+            if method=='eth_chainId':
+                status['received_chain_id']=int(payload['result'],16)
+                status['expected_chain_id']=8453
+                if status['received_chain_id']!=8453:status['failure_code']='WRONG_NETWORK'
             return payload['result']
         status.update(validate(call,save));status['status']='RPC_CAPABILITY_PASS_SAMPLE_ONLY'
         return 0
