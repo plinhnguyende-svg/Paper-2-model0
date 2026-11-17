@@ -110,10 +110,10 @@ class CensusTests(unittest.TestCase):
 
     def test_large_raw_fee_ratios_use_exact_decimal(self):
         numerator=2**200+1
-        denominator=2**201+7
+        denominator=3*2**200+7
         ratio=Decimal(numerator)/Decimal(denominator)
-        self.assertGreater(ratio,Decimal("0.49"))
-        self.assertLess(ratio,Decimal("0.5"))
+        self.assertGreater(ratio,Decimal("0.33"))
+        self.assertLess(ratio,Decimal("0.34"))
         self.assertNotEqual(Decimal(str(numerator/denominator)),ratio)
 
     def test_actual_pool_HHI_requires_full_project_vector(self):
