@@ -61,8 +61,8 @@ jobs:
           python3 scripts/gate29_indexed_transfers.py \
             --out results/gate29/census \
             --max-pages 32 \
-            --max-receipts 100 \
-            --max-seconds 95 \
+            --max-receipts 400 \
+            --max-seconds 180 \
             2>&1 | tee results/gate29/census/INDEXER_RUN.log
       - name: Discover chronological pool and calculator events from historical Base RPC
         env:
@@ -73,11 +73,11 @@ jobs:
             --out results/gate29/census \
             --start-block 0 \
             --chunk 200000 \
-            --max-seconds 125 \
-            --max-log-calls 450 \
-            --max-calc-seconds 45 \
-            --max-calc-log-calls 120 \
-            --max-receipts 60 \
+            --max-seconds 45 \
+            --max-log-calls 45 \
+            --max-calc-seconds 15 \
+            --max-calc-log-calls 25 \
+            --max-receipts 30 \
             2>&1 | tee results/gate29/census/SCAN_RUN.log
       - name: Enrich first historical event blocks without equating B-1 with transaction-index state
         env:
@@ -86,8 +86,8 @@ jobs:
           set -euo pipefail
           python3 scripts/gate29_prestate_enrich.py \
             --out results/gate29/census \
-            --max-blocks 18 \
-            --max-seconds 110 \
+            --max-blocks 75 \
+            --max-seconds 180 \
             2>&1 | tee results/gate29/census/PRESTATE_RUN.log
       - name: Empirical variation and identification feasibility decision
         run: |
