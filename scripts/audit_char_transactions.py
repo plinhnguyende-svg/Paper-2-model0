@@ -80,7 +80,7 @@ def explorer_candidates(out,pages=4):
 def main():
     p=argparse.ArgumentParser()
     p.add_argument('--start',type=int,required=True);p.add_argument('--end',type=int,required=True)
-    p.add_argument('--out',required=True);p.add_argument('--max-receipts',type=int,default=12)
+    p.add_argument('--out',required=True);p.add_argument('--max-receipts',type=int,default=24)
     args=p.parse_args()
     if not 0<=args.start<=args.end:p.error('invalid block interval')
     out=Path(args.out);out.mkdir(parents=True,exist_ok=True)
@@ -98,7 +98,7 @@ def main():
         summary['asset_transfer_discovery']=[]
         # Provider indexer nominates hashes only; actual RPC receipts decide evidence.
         if not candidates:
-            for order in ['desc','asc']:
+            for order in ['asc','desc']:
                 try:
                     params=dict(fromBlock='0x0',toBlock=hex(args.end),contractAddresses=[POOL],
                                 fromAddress=ZERO,category=['erc20'],excludeZeroValue=True,
