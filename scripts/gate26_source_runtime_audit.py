@@ -23,6 +23,7 @@ IMPLEMENTATION_SLOT = (
 GATE25_CALCULATOR_HASH = "0x18a0f3dc9ce66d94741ad4e13edf136a497154f96c828bfa9148bc0591a1900b"
 GATE25_POOL_IMPL_HASH = "0x9e01a24f7396330a59b37961a59c3ea2db412674f62570fdbb29bb0c73204c80"
 GATE25_BLOCKS = {13826401, 15709581}
+DEPLOY_TX = "0x23e3050ea6498a843c5c7af7b171b0ccfbdcf29246e1914dbd0cc848ad25524b"
 
 
 def parse_code(raw):
@@ -203,6 +204,19 @@ def main():
         rpc = RPC()
         if int(rpc.call("eth_chainId", []), 16) != 8453:
             raise ValueError("WRONG_CHAIN_ID")
+        deployment = rpc.call("eth_getTransactionReceipt", [DEPLOY_TX])
+        if not deployment or deployment.get("contractAddress", "").lower() != CALCULATOR:
+            raise ValueError("PUBLIC_DEPLOYMENT_TX_DOES_NOT_CREATE_CALCULATOR")
+        creation_block = int(deployment["blockNumber"], 16)
+        block_data = rpc.call("eth_getBlockByNumber", [hex(creation_block), False])
+        if not block_data or block_data["hash"] != deployment["blockHash"]:
+            raise ValueError("CALCULATOR_DEPLOYMENT_BLOCK_IDENTITY_MISMATCH")
+        report["public_repository_deployment"] = dict(
+            documented_in="ToucanProtocol/contracts/deployments/production/base/FeeCalculator.json",
+            tx_hash=DEPLOY_TX, deployed_address=deployment["contractAddress"].lower(),
+            block=creation_block, timestamp_utc_unix=int(block_data["timestamp"], 16),
+            canonical_receipt_status=int(deployment["status"], 16)
+        )
         snaps = []
         for block in args.blocks:
             s = snapshot(rpc, block, out)
@@ -229,16 +243,36 @@ def main():
         anchors = [row["gate25_same_codehash"] for row in report["block_results"]
                    if row["gate25_same_codehash"] != "NOT_ANCHORED"]
         report["gate25_codehash_anchors_pass"] = bool(anchors) and all(x == "MATCHED" for x in anchors)
-        found_exact = any(x["status"] == "EXACT_RUNTIME_MATCH"
-                          for row in report["block_results"] for x in row["comparisons"].values())
-        found_exec = any(x["status"] == "EXECUTABLE_PREFIX_MATCH_METADATA_DIFFERS"
-                         for row in report["block_results"] for x in row["comparisons"].values())
+        def names_for(status, historical):
+            return sorted({
+                name for row in report["block_results"]
+                for name, x in row["comparisons"].items()
+                if name.startswith("hist_") == historical and x["status"] == status
+            })
+        pinned_exact = names_for("EXACT_RUNTIME_MATCH", False)
+        pinned_exec = names_for("EXECUTABLE_PREFIX_MATCH_METADATA_DIFFERS", False)
+        historical_exact = names_for("EXACT_RUNTIME_MATCH", True)
+        historical_exec = names_for("EXECUTABLE_PREFIX_MATCH_METADATA_DIFFERS", True)
+        report["pinned_source_7aef954d"] = dict(
+            exact_candidates=pinned_exact, executable_candidates=pinned_exec,
+            verdict=("EXACT_MATCH" if pinned_exact else
+                     "EXECUTABLE_ONLY_MATCH" if pinned_exec else
+                     "NOT_MATCHED_IN_TESTED_CONFIGURATIONS")
+        )
+        report["alternative_source_commits"] = dict(
+            exact_candidates=historical_exact, executable_candidates=historical_exec,
+            scope="historical candidates only; not proof of pinned 7aef954d"
+        )
         if not report["gate25_codehash_anchors_pass"]:
             report["status"] = "INCONSISTENT_WITH_GATE25_CODEHASH"
-        elif found_exact and report["all_snapshots_same_calculator_runtime"]:
-            report["status"] = "EXACT_SOURCE_RUNTIME_MATCH_DECLARED_SNAPSHOTS"
-        elif found_exec and report["all_snapshots_same_calculator_runtime"]:
-            report["status"] = "EXECUTABLE_PREFIX_MATCH_ONLY_METADATA_DIFFERS"
+        elif pinned_exact and report["all_snapshots_same_calculator_runtime"]:
+            report["status"] = "EXACT_PINNED_SOURCE_RUNTIME_MATCH"
+        elif pinned_exec and report["all_snapshots_same_calculator_runtime"]:
+            report["status"] = "PINNED_SOURCE_EXECUTABLE_ONLY_MATCH"
+        elif historical_exact and report["all_snapshots_same_calculator_runtime"]:
+            report["status"] = "ALTERNATIVE_HISTORICAL_SOURCE_EXACT_MATCH_PINNED_UNMATCHED"
+        elif historical_exec and report["all_snapshots_same_calculator_runtime"]:
+            report["status"] = "ALTERNATIVE_HISTORICAL_SOURCE_EXECUTABLE_ONLY_MATCH_PINNED_UNMATCHED"
         else:
             report["status"] = "NO_SOURCE_EQUIVALENCE_ESTABLISHED_IN_TESTED_CONFIGS"
         report["historical_pool_source_equivalence"] = "NOT_TESTED_NO_PINNED_POOL_IMPL_SOURCE"
