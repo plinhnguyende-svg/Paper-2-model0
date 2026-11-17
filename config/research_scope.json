@@ -1,5 +1,5 @@
 {
-  "version": "Gate27-2026-11-17",
+  "version": "Gate28-2026-11-17",
   "topic": "Economic Design of Smart-Contract Carbon Pools: Participation, Value Allocation, and Upstream Transmission in Biochar Supply Chains",
   "central_object": "executable fee, transaction and allocation rules; not a generic blockchain benefit term",
   "research_questions": {
@@ -26,7 +26,8 @@
     "commercial pass-through identification",
     "causal environmental effect",
     "literature novelty closure",
-    "global continuous or function-space fee optimum with participation and budget constraints"
+    "formal directed interval arithmetic and continuous policy existence/attainment at activation switches",
+    "full function-space optimal fee design beyond single scale parameter"
   ],
   "primary_reader_entry": "docs/GATE21_RESEARCH_MAP_VI.md",
   "source_provenance": {
@@ -36,5 +37,16 @@
     "historical_upgrade": "One observed proxy Upgraded(address) event at block 28317185; full upgrade census not established",
     "scope": "three specifically observed runtime contracts; not all historical deployments or fee configurations"
   },
-  "continuous_equilibrium_scope": "Gate27 strictly interior, unsaturated active partial equilibrium: inverse fee-scale a(y) with global participation check against Gate20 solver; synthetic local fee-budget crossing, not globally proven continuous designer optimum"
+  "continuous_equilibrium_scope": "Gate27 strictly interior, unsaturated active partial equilibrium: inverse fee-scale a(y) with global participation check against Gate20 solver; synthetic local fee-budget crossing, not globally proven continuous designer optimum",
+  "continuous_designer": {
+    "model": "Global one-horizon known-state continuous fee scale a in (0,1] with Gate20 globally solved partial producer/intermediary response",
+    "analytical_results": [
+      "Selected output and pool lot are nonincreasing in fee scale",
+      "Smallest feasible continuous scale (if attained) is weak global optimum for modeled output",
+      "HHI-participation impossibility criterion on entire continuous scale domain"
+    ],
+    "machine_result": "Five feasible full-domain numerical scale brackets <1e-6 width; one analytical global no-feasibility case; supplementary liquidity/beta/gas robust scenarios",
+    "scope": "Hypothetical fixed prices, beta, verified-credit yield, single initial inventory state; 70-digit Decimal not directed interval arithmetic",
+    "evidence": "docs/GATE28_CONTINUOUS_GLOBAL_DESIGN.md"
+  }
 }
