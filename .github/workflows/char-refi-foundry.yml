@@ -236,6 +236,10 @@ jobs:
           version: stable
       - name: Validate raw receipt accounting with labeled synthetic fixtures
         run: python3 -m unittest discover -s tests -p 'test_char_receipts.py' -v
+      - name: Verify configured historical RPC capabilities
+        env:
+          BASE_RPC_URL: ${{ secrets.BASE_RPC_URL }}
+        run: python3 scripts/check_base_rpc_access.py transaction_evidence/rpc_preflight
       - name: Discover and reconcile a bounded actual receipt sample
         env:
           BASE_RPC_URL: ${{ secrets.BASE_RPC_URL }}
