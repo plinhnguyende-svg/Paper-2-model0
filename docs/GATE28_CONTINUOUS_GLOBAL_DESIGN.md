@@ -187,7 +187,15 @@ The code additionally archives **three named synthetic robustness configurations
 - Contractual pass-through \(\beta=0\) at q=10: the producer output remains at its outside optimum even if the intermediary joins the pool.
 - Prohibitive fixed gas \(g=50\): lack of intermediary participation defeats any strictly positive recipient fee budget.
 
-The full report includes the numerical global-search status for these cases in REGIME_ROBUSTNESS_SYNTHETIC.json. Separately, tests verify outside, unsaturated, saturated and early-liquidity-binding responses. No environmental claim or real producer payment is inferred.
+The verified extra **continuous-scale results** are:
+
+| Robustness case | Best numerically feasible scale | Selected producer output | Mechanism |
+|---|---:|---:|---|
+| H0 q=10, early cash L=5 | 0.1162280273 | 20 | Liquidity binding, pooling active |
+| H0 q=10, beta=0 | 0.0502322388 | 35 | Pooling active, no contractual producer output response |
+| H0 q=10, fixed gas g=50 | No feasible positive-budget policy identified by whole-domain numerical exclusions | 35 outside only | Participation fails |
+
+The full machine-readable search status is in **REGIME_ROBUSTNESS_SYNTHETIC.json**. Separately, tests verify outside, unsaturated, saturated and early-liquidity-binding responses. No environmental claim or real producer payment is inferred.
 
 ## 10. Gate decision and research boundaries
 
