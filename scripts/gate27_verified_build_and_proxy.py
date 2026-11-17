@@ -239,6 +239,33 @@ def main():
         )
         rpc = RPC()
         assert int(rpc.call("eth_chainId", []), 16) == CHAIN, "WRONG_NETWORK"
+        verified_live = []
+        for role, addr, block in [
+            ("fee_calculator", CALC, 13826401),
+            ("early_pool_implementation", OLD_IMPL, 13826401),
+            ("later_pool_implementation", NEW_IMPL, 58258072),
+        ]:
+            public_file = out / (role + "_sourcify_v2_verification.json")
+            record = dict(role=role, address=addr, historical_block=block,
+                          status="PUBLIC_VERIFIED_SOURCE_UNAVAILABLE")
+            if public_file.exists():
+                verified = json.loads(public_file.read_text())
+                record["sourcify_match"] = verified.get("match")
+                record["compiler"] = (verified.get("compilation") or {}).get("compilerVersion")
+                reference = (verified.get("runtimeBytecode") or {}).get("onchainBytecode")
+                if isinstance(reference, str) and reference.startswith("0x"):
+                    raw = rpc.call("eth_getCode", [addr, hex(block)])
+                    record["full_runtime_byte_equality"] = raw.lower() == reference.lower()
+                    record["size_bytes"] = (len(raw)-2)//2
+                    record["runtime_sha256"] = hashlib.sha256(bytes.fromhex(raw[2:])).hexdigest()
+                    record["status"] = ("LIVE_RPC_EQUALS_SOURCIFY_VERIFIED_RUNTIME"
+                                        if record["full_runtime_byte_equality"]
+                                        else "LIVE_RPC_RUNTIME_CONTRADICTS_VERIFIED_SOURCE")
+            verified_live.append(record)
+        summary["verified_live_runtime"] = verified_live
+        if any(row["status"] == "LIVE_RPC_RUNTIME_CONTRADICTS_VERIFIED_SOURCE"
+               for row in verified_live):
+            raise ValueError("VERIFIED_PUBLIC_BYTECODE_MISMATCH")
         summary["proxy_boundary"] = transition_boundary(rpc)
         summary["proxy_change"] = summary["proxy_boundary"]["status"]
         summary["status"] = "EVIDENCE_COLLECTED_WITH_EXPLICIT_LIMITS"
