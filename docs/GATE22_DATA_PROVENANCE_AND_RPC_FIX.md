@@ -30,8 +30,8 @@ The repaired pipeline:
    are method-specific and sanitized, not concealed as empty activity.
 3. Uses at most four Blockscout token-transfer pages to nominate mint/burn txs;
    the indexer is discovery only. RPC transaction/receipt/block identities must match.
-4. If indexer discovery is unavailable, scans the declared recent historical window
-   in bounded chunks with RPC method failover. No full-history claim is made.
+4. If indexer discovery is unavailable, scans explicitly recorded recent and launch-time windows
+   in 1,000-block chunks with RPC method failover. No full-history claim is made.
 5. Decodes known pool events and checks them against actual ERC20 mint/burn/
    transfers and underlying movements. Synthetic fixtures are separately labeled.
 6. Attempts call/prestate tracing for the first matched receipt, retaining failures.
@@ -64,3 +64,35 @@ working capital or new biochar output. Larger transaction panels, market prices,
 legal/contract records and producer data would be needed for those empirical claims.
 Until then describe results as institutionally grounded theory and sensitivity
 analysis, and keep the RQ2-to-RQ3 transmission theorem explicitly conditional.
+
+## Observed rerun outcome — 17 November 2026
+
+Run: https://github.com/plinhnguyende-svg/Paper-2-model0/actions/runs/44015563042
+Tested head: d70e8b2b8af81eced20a74074a008c3b7cc5a3a9.
+
+Six source/EVM/economic jobs passed. The separate actual-receipt data job FAILED,
+with zero matched receipts. The full workflow therefore remains FAILED.
+The failure artifact records:
+- PublicNode: HTTP 403, archive requests require a personal token.
+- Base public: HTTP 429, request limit reached.
+- dRPC: HTTP 400, free-plan range restriction; this persisted with 1,000-block
+  requests, so reducing the requested chunk did not establish archive capability.
+- Blockscout discovery: HTTP error, no successful candidate discovery.
+
+No producer/transaction sample result is promoted by this rerun. This is not proof
+that no pool transactions exist. The attempt was incomplete.
+
+### Concrete next data-access action
+
+Provide an authorized Base RPC with historical eth_getLogs and transaction/receipt
+access in repository Settings > Secrets and variables > Actions as BASE_RPC_URL.
+No signing key, wallet connection or funds are required. Do not put the URL/token
+in source files, issue comments or public logs. The collector already prefers
+that secret and sanitizes provider failure diagnostics. Rerun the workflow after
+configuration. A personal/free-tier endpoint is sufficient only if those methods
+and historical ranges actually work; no purchase is assumed.
+
+After first real receipt success, archive the raw files with their manifest and
+replay offline. Treat sample receipt accounting, complete transaction discovery,
+exact prestate fee reproduction and producer attribution as separate acceptance
+criteria. Even a future green sample job leaves the latter three unresolved.
