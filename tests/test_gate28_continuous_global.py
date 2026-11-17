@@ -92,6 +92,23 @@ class Gate28Tests(unittest.TestCase):
         self.assertEqual(c["status"],"NO_FEASIBLE_CONTINUOUS_POLICY_BOUNDED_NUMERIC_EXCLUSIONS")
         self.assertIsNone(c["best_feasible_scale_numeric"])
 
+    def test_analytic_global_no_pooling_under_hhi_cap_s0_q70(self):
+        p=replace(self.base,q=D(70),ratio=D(".99"),scale=D(".18"))
+        cert=ContinuousDesigner(p).solve()
+        self.assertEqual(cert["status"],
+                         "ANALYTIC_GLOBAL_INFEASIBLE_HHI_VS_PARTICIPATION")
+        proof=cert["structural_infeasibility"]
+        self.assertTrue(proof["global_infeasible"])
+        self.assertGreater(D(proof["outside_supply"]),D(proof["HHI_lot_cap"]))
+        self.assertLess(D(proof["critical_net_gain"]),0)
+
+    def test_same_hhi_conflict_not_falsely_applied_to_h0_q70(self):
+        p=replace(self.base,q=D(70),ratio=D("1.25"),scale=D(".15"))
+        engine=ContinuousDesigner(p)
+        t=engine.structural_infeasibility()
+        self.assertFalse(t["global_infeasible"])
+        self.assertGreater(D(t["critical_net_gain"]),0)
+
     def test_bad_fee_budget_rejected(self):
         with self.assertRaises(ValueError):
             ContinuousDesigner(self.base,budget=D(0))
