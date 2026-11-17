@@ -19,7 +19,7 @@ import time
 import urllib.request
 from collections import Counter, defaultdict
 
-from char_receipt_accounting import POOL, reconcile
+from char_receipt_accounting import POOL, ZERO, reconcile, token_transfers
 
 CHAIN = 8453
 CALC = "0x6a4549759c475d845d4ae074b3656dc257490da5"
@@ -252,10 +252,80 @@ def canonical_receipt(rpc,txhash,discovered):
     return tx,receipt,block
 
 
+def reconcile_zero_fee_by_raw_transfers(receipt,topics):
+    """Tight validation for single-action transactions with no fee events.
+
+    Absence of DepositFeePaid does NOT alone imply zero fee. Require
+    gross underlying transfer and exactly matching sole CHAR mint,
+    or matching burn and underlying outflow. Does not determine WHY
+    a fee is zero (seeding, exemption, implementation branch).
+    """
+    pool_events=[l for l in receipt.get("logs",[])
+       if l["address"].lower()==POOL and l.get("topics")]
+    fee_topic_set={topics[n] for n in
+       ("DepositFeePaid","RedeemFeePaid","RedeemFeeBurnt")}
+    if any(x["topics"][0].lower() in fee_topic_set for x in pool_events):
+        return None
+    deposited=[x for x in pool_events if
+        x["topics"][0].lower()==topics["Deposited"]]
+    redeemed=[x for x in pool_events if
+        x["topics"][0].lower()==topics["Redeemed"]]
+    if len(deposited)+len(redeemed)!=1:
+        return None
+    raw=deposited[0] if deposited else redeemed[0]
+    words=[raw["data"][i:i+64] for i in range(2,len(raw["data"]),64)]
+    transfers=token_transfers(receipt)
+    if deposited:
+        if len(words)!=2:
+            return None
+        token="0x"+words[0][-40:].lower()
+        amount=int(words[1],16)
+        minted=[x for x in transfers if x["token"]==POOL and x["sender"]==ZERO]
+        underlying=[x for x in transfers if
+                    x["token"]==token and x["recipient"]==POOL]
+        if not (len(minted)==1 and len(underlying)==1
+                 and amount>0 and minted[0]["amount_raw"]==amount
+                 and underlying[0]["amount_raw"]==amount
+                 and minted[0]["recipient"]==underlying[0]["sender"]):
+            return None
+        actor=minted[0]["recipient"]
+        return dict(status="RECEIPT_ZERO_FEE_MATCH",kind="deposit",
+                    actor=actor,underlying=token,amount_raw=amount,
+                    fee_raw=0,observed_fee_destinations=[],
+                    checks=dict(one_gross_mint_exact=True,
+                                token_enters_pool_exact=True,
+                                same_actor_mint_and_underlying_transfer=True),
+                    zero_fee_reason="NOT_IDENTIFIED_SEEDING_EXEMPTION_OR_OTHER")
+
+    if len(words)!=3:
+        return None
+    actor="0x"+words[0][-40:].lower()
+    token="0x"+words[1][-40:].lower()
+    amount=int(words[2],16)
+    burnt=[x for x in transfers if x["token"]==POOL
+           and x["sender"]==actor and x["recipient"]==ZERO]
+    outflow=[x for x in transfers if x["token"]==token
+             and x["sender"]==POOL and x["recipient"]==actor]
+    if not (amount>0 and len(burnt)==1 and len(outflow)==1
+            and burnt[0]["amount_raw"]==amount
+            and outflow[0]["amount_raw"]==amount):
+        return None
+    return dict(status="RECEIPT_ZERO_FEE_MATCH",kind="redemption",
+                actor=actor,underlying=token,amount_raw=amount,
+                fee_raw=0,observed_fee_destinations=[],
+                checks=dict(one_gross_burn_exact=True,
+                            underlying_outflow_exact=True),
+                zero_fee_reason="NOT_IDENTIFIED_EXEMPTION_OR_OTHER")
+
+
 def receipt_row(rpc, txhash, discovered, topics):
     tx,receipt,block=canonical_receipt(rpc,txhash,discovered)
     matched=reconcile(receipt,{name:topics[name] for name in
        ("DepositFeePaid","RedeemFeePaid","RedeemFeeBurnt","Deposited","Redeemed")})
+    if matched["status"]=="UNSUPPORTED_OR_NON_FEE_ACTION":
+        zero=reconcile_zero_fee_by_raw_transfers(receipt,topics)
+        if zero:
+            matched=zero
     record={
         "tx_hash":txhash,"block":as_int(receipt["blockNumber"]),
         "tx_index":as_int(receipt["transactionIndex"]),
@@ -532,7 +602,8 @@ def write_panel(out, rows, event_rows,topics):
         for index,action in enumerate(actions):
             kind="deposit" if action["event"]=="Deposited" else "redemption"
             matched=(record.get("transaction_type")==kind and
-                     record.get("receipt_accounting_status")=="RECEIPT_ACCOUNTING_MATCH"
+                     record.get("receipt_accounting_status") in (
+                         "RECEIPT_ACCOUNTING_MATCH","RECEIPT_ZERO_FEE_MATCH")
                      and len(actions)==1)
             # The fee event is direct historical on-chain data but is not an
             # independently reconciled canonical receipt. Distinguish the two
@@ -797,8 +868,11 @@ def main():
            receipt_candidates=receipts["candidate_count"],
            receipts_checked=receipts["processed_count"],
            receipts_remaining=receipts["unprocessed_candidates"],
-           receipt_accounting_matches=sum(x.get("receipt_accounting_status")==
-                    "RECEIPT_ACCOUNTING_MATCH" for x in receipts["rows"]),
+           receipt_accounting_matches=sum(x.get("receipt_accounting_status") in
+                    ("RECEIPT_ACCOUNTING_MATCH","RECEIPT_ZERO_FEE_MATCH")
+                    for x in receipts["rows"]),
+           zero_fee_receipt_matches=sum(x.get("receipt_accounting_status")==
+                    "RECEIPT_ZERO_FEE_MATCH" for x in receipts["rows"]),
            trade_action_rows=len(panel),
            exact_prestate_rows=0,
            identification_status=audit["status"],
