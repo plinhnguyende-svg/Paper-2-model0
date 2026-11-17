@@ -484,6 +484,10 @@ def receipt_audit(rpc,out,args,pool_logs,topics):
     candidate=tx_candidates(pool_logs,topics)
     archive=out/"RECEIPTS";archive.mkdir(exist_ok=True)
     oldrows={x["tx_hash"]:x for x in load_jsonl(out/"RECEIPT_ROWS.jsonl")}
+    for indexed in load_jsonl(out/"INDEXER_RECEIPT_ROWS.jsonl"):
+        if indexed.get("trade_event_detected") and \
+           indexed.get("canonical_identity")=="VALIDATED":
+            oldrows.setdefault(indexed["tx_hash"],indexed)
     added=[]
     count=0
     for txhash in candidate:
@@ -720,12 +724,22 @@ def main():
         if log_rpc is None:
             raise ValueError("NO_LOG_PROVIDER_PASSED_HISTORICAL_CANARIES")
         pool=census(log_rpc,out,args,topics,history_rpc=rpc)
-        calc=scan_calculator_events(log_rpc,out,args,topics,pool["logs"],
+        # Indexed mint/burn candidates are independently receipt-verified
+        # sources of additional transactions, NEVER extra eth_getLogs coverage.
+        indexed_logs=load_jsonl(out/"INDEXER_VERIFIED_POOL_EVENTS.jsonl")
+        merged_logs={}
+        for entry in pool["logs"]+indexed_logs:
+            key=(entry["transactionHash"].lower(),as_int(entry["logIndex"]))
+            if key in merged_logs and merged_logs[key]!=entry:
+                raise ValueError("INDEXER_AND_DIRECT_LOG_CONFLICT")
+            merged_logs[key]=entry
+        observed_pool_logs=ensure_consistency(list(merged_logs.values()))
+        calc=scan_calculator_events(log_rpc,out,args,topics,observed_pool_logs,
                                     history_rpc=rpc)
-        events=extract_event_rows(pool["logs"]+calc["logs"],topics)
+        events=extract_event_rows(observed_pool_logs+calc["logs"],topics)
         append_file=out/"ALL_DECODED_EVENTS.json"
         save_json(append_file,events)
-        receipts=receipt_audit(rpc,out,args,pool["logs"],topics)
+        receipts=receipt_audit(rpc,out,args,observed_pool_logs,topics)
         panel=write_panel(out,receipts["rows"],events,topics)
         audit=identification_audit(panel,events,
                                   [x for x in events if x["contract"]!=POOL],
@@ -752,6 +766,10 @@ def main():
            effective_pool_census_start=pool["effective_start"],
            effective_calculator_census_start=calc["effective_start_by_calculator"],
            pool_log_calls=pool["log_calls"],pool_event_logs=len(pool["logs"]),
+           additional_receipt_verified_indexer_pool_event_logs=len(observed_pool_logs)-len(pool["logs"]),
+           indexed_candidates_summary=(
+               json.loads((out/"INDEXER_SUMMARY.json").read_text()) if
+               (out/"INDEXER_SUMMARY.json").exists() else "INDEXER_NOT_RUN"),
            calculator_log_calls=calc["log_calls"],
            calculator_event_logs=len(calc["logs"]),
            pool_scan_complete=pool["complete"],
