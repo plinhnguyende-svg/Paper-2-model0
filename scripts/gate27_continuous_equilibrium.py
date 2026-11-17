@@ -111,9 +111,9 @@ def example():
         r=solve_partial(p)
         y=r["chosen"]["y"]
         row=evaluate_inverse(p,y)
-        # Show a *local* continuous fee-budget boundary between .04 and .05.
+        # Show a *local* continuous fee-budget boundary between .03 and .04.
         # Feasibility outside the bracket is NOT certified.
-        left,right=D(".04"),D(".05")
+        left,right=D(".03"),D(".04")
         def fee_at(a):
             chosen=solve_partial(replace(p,scale=a))["chosen"]
             return chosen.get("fee",D(0))
@@ -134,7 +134,7 @@ def example():
             local_budget_boundary=dict(
                 scale=str(threshold),fee=str(selected.get("fee",D(0))),
                 production=str(selected["y"]),channel=selected["channel"],
-                bracket=["0.04","0.05"],nominal_floor="0.5",
+                bracket=["0.03","0.04"],nominal_floor="0.5",
                 caveat="local bracket and numerical bisection only; not full real-scale global optimum"
             )
         )
