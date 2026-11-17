@@ -135,9 +135,73 @@ class ContinuousDesigner:
                 return row["scale"]
         return None
 
+    def structural_infeasibility(self):
+        """Global theorem: inventory cap conflicts with pooling activation.
+
+        Assume eta*y_out > z_cap and dynamic f is smooth at z_cap.
+        Define a_c=(P-v)/(P*f'(z_cap)).
+        For a<a_c, G'_a(z_cap)>0. The intermediary's optimal lot
+        exceeds z_cap whenever pooling activates, since eta*y>=eta*y_out
+        by Gate20 output floor. Hence HHI fails.
+        For a>=a_c, G_a(z)<=G_{a_c}(z_cap) for every z because
+        G_a is pointwise decreasing in a, and G_{a_c} has its unique
+        maximum at z_cap. If this gross gain <=gas, pooling cannot
+        activate. At tie the declared outside rule applies.
+        If a_c>1, all admissible a fail the HHI condition whenever active.
+        """
+        p=self.p
+        y0=solve_partial(p)["outside"]["y"]
+        if p.P<=p.v:
+            return dict(reason="P_NOT_ABOVE_OUTSIDE", global_infeasible=True,
+                        observation="gross pooling gain cannot exceed gas")
+        if not p.eta*y0 > self.zcap+GUARD:
+            return dict(reason="NOT_APPLICABLE_OUTSIDE_SUPPLY_BELOW_HHI_CAP",
+                        global_infeasible=False)
+        limit=domain_bound(p)*p.eta
+        if limit.is_finite() and self.zcap >= limit:
+            return dict(reason="NOT_APPLICABLE_HHI_CAP_OUTSIDE_LOG_DOMAIN",
+                        global_infeasible=False)
+        unit_fee,unit_marginal,_=deposit(self.zcap,self.unit)
+        if unit_marginal<=0:
+            return dict(reason="NOT_APPLICABLE_NONPOSITIVE_UNIT_MARGINAL",
+                        global_infeasible=False)
+        ac=(p.P-p.v)/(p.P*unit_marginal)
+        gross=(p.P-p.v)*self.zcap-p.P*ac*unit_fee
+        condition=(ac>1+GUARD or (ac<=1 and gross < p.gas-GUARD))
+        return dict(
+            global_infeasible=condition,
+            reason=("HHI_VS_PARTICIPATION_NO_OVERLAP" if condition
+                    else "STRUCTURAL_TEST_DOES_NOT_EXCLUDE_FEASIBILITY"),
+            outside_supply=str(p.eta*y0), HHI_lot_cap=str(self.zcap),
+            critical_scale=str(ac), critical_gross_gain_before_gas=str(gross),
+            gas=str(p.gas), critical_net_gain=str(gross-p.gas),
+            all_scale_domain="(0,1]",
+            math_status="global sufficient condition, numerical strict inequalities")
+
     def solve(self):
         with localcontext() as ctx:
             ctx.prec=70
+            theorem=self.structural_infeasibility()
+            if theorem["global_infeasible"]:
+                return dict(
+                    status="ANALYTIC_GLOBAL_INFEASIBLE_HHI_VS_PARTICIPATION",
+                    benchmark_scope="Gate20 fixed-state real fee; not EVM",
+                    feasible_scale=None, selected_feasible=None,
+                    smallest_feasible_scale_lower_bound_numeric=None,
+                    best_feasible_scale_numeric=None,
+                    scale_gap_numeric=None,
+                    modeled_output_at_feasible_scale=None,
+                    fee_budget=str(self.budget),
+                    HHI_cap=str(self.max_hhi),lot_cap=str(self.zcap),
+                    outside_y=str(solve_partial(self.p)["outside"]["y"]),
+                    structural_infeasibility=theorem,
+                    sampled_regimes=["NO_POOL_OR_HHI_VIOLATION"],
+                    counters=self.counters,
+                    qualifications=[
+                        "Analytical sufficient condition checks all a in (0,1]",
+                        "Strict numerical inequalities checked with 70-digit Decimal, not formal interval arithmetic",
+                        "Positive fee budget is impossible without pooling; conditional contract and price assumptions"
+                    ])
             seed=self.find_seed()
             best=seed
             heap=[(D(0),best if best is not None else D(1))]
@@ -207,6 +271,7 @@ class ContinuousDesigner:
                     "A near-optimal scale bracket is not a proof of unique scale or unique outcome",
                 ],
                 "boundary_cells":terminal_cells,
+                "structural_infeasibility":theorem,
                 "sampled_regimes":sorted(set(x["regime"] for x in self.cache.values())),
             }
             if best is not None and lower is not None:
