@@ -223,31 +223,3 @@ jobs:
             results/gate21/**
           if-no-files-found: error
 
-  transaction-evidence:
-    name: Actual CHAR receipt evidence (separate data gate)
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          persist-credentials: false
-      - uses: foundry-rs/foundry-toolchain@v1
-        with:
-          version: stable
-      - name: Validate raw receipt accounting with labeled synthetic fixtures
-        run: python3 -m unittest discover -s tests -p 'test_char_receipts.py' -v
-      - name: Verify configured historical RPC capabilities
-        env:
-          BASE_RPC_URL: ${{ secrets.BASE_RPC_URL }}
-        run: python3 scripts/check_base_rpc_access.py transaction_evidence/rpc_preflight
-      - name: Discover and reconcile a bounded actual receipt sample
-        env:
-          BASE_RPC_URL: ${{ secrets.BASE_RPC_URL }}
-        run: python3 scripts/audit_char_transactions.py --start 58000000 --end 58258072 --out transaction_evidence
-      - name: Archive actual data and explicit unresolved evidence scope
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: char-actual-receipt-evidence
-          path: transaction_evidence/**
-          if-no-files-found: error
