@@ -155,8 +155,11 @@ class Rpc:
             with urllib.request.urlopen(req,timeout=24) as response:
                 obj=json.load(response)
         except Exception as exc:
-            self.failures[method+"_"+type(exc).__name__]+=1
-            raise RuntimeError("RPC_TRANSPORT_ERROR_"+method) from None
+            # HTTP status is safe diagnostic metadata; never include request URL,
+            # response body, API key or configured transport exception string.
+            code=("_HTTP_"+str(exc.code)) if hasattr(exc,"code") else "_"+type(exc).__name__
+            self.failures[method+code]+=1
+            raise RuntimeError("RPC_TRANSPORT"+code+"_"+method) from None
         if not isinstance(obj,dict) or "error" in obj or "result" not in obj:
             self.failures[method+"_JSONRPC_ERROR"]+=1
             raise RuntimeError("RPC_METHOD_UNAVAILABLE_OR_LIMITED_"+method)
@@ -319,8 +322,29 @@ def census(rpc,out,args,topics,history_rpc=None):
     if effective_start>end:
         raise ValueError("START_BEYOND_HEAD")
     groups=missing_intervals(effective_start,end,successes)
-    work=[]
-    for a,b in groups:
+    # First recover independently documented event-bearing windows to build
+    # a useful real-data sample, then resume the complete chronological census.
+    canary_ranges=[(13826150,13826650),(15709320,15709820),
+                   (28317182,28317188),(58257800,58258072)]
+    priority=[]
+    selected_priority=[]
+    for a,b in canary_ranges:
+        a,b=max(a,effective_start),min(b,end)
+        if a>b:
+            continue
+        for lo,hi in groups:
+            left,right=max(lo,a),min(hi,b)
+            if left<=right:
+                for st in range(left,right+1,min(args.chunk,100)):
+                    priority.append((st,min(right,st+min(args.chunk,100)-1)))
+                selected_priority.append((left,right))
+    # Excluding priority windows from the remaining *work queue* does not
+    # mark them covered; only successfully recorded leaf scans do that.
+    reserved=[dict(start=a,end=b,status="SUCCESS") for a,b in selected_priority]
+    remaining=missing_intervals(effective_start,end,
+                  covered_intervals(existing+reserved))
+    work=priority[:]
+    for a,b in remaining:
         for left in range(a,b+1,args.chunk):
             work.append((left,min(b,left+args.chunk-1)))
     calls=0
@@ -662,16 +686,39 @@ def main():
             raise RuntimeError("WRONG_CHAIN_NOT_BASE")
         topics=topic_map()
         save_json(out/"EVENT_TOPICS.json",topics)
-        # Preserve credential separation: public indexing RPC is read-only and
-        # only returns logs. Configured private archive RPC remains the
-        # independent source of canonical receipts and historical state.
-        log_rpc=Rpc(os.environ.get("GATE29_LOG_RPC_URL",
-                       "https://base-rpc.publicnode.com"))
-        if as_int(log_rpc.call("eth_chainId",[]))!=CHAIN:
-            raise ValueError("LOG_PROVIDER_NOT_BASE_MAINNET")
-        canaries=verify_public_log_provider(log_rpc,topics)
-        status["public_log_canaries"]=canaries
-        status["log_provider"]="PUBLICNODE_BASE_OR_EXPLICIT_ENV_OVERRIDE"
+        # Try independent public archival log sources; require two actual
+        # historical event canaries before trusting a provider. The configured
+        # archive RPC remains authoritative for historical state and receipts.
+        sources=[]
+        custom=os.environ.get("GATE29_LOG_RPC_URL","").strip()
+        if custom:
+            sources.append(("USER_LOG_RPC",custom))
+        sources.extend([
+            ("PUBLICNODE_BASE","https://base-rpc.publicnode.com"),
+            ("DRPC_BASE","https://base.drpc.org"),
+            ("BASE_OFFICIAL","https://mainnet.base.org"),
+            ("CONFIGURED_ARCHIVE_FALLBACK",url)
+        ])
+        diagnostics=[]
+        log_rpc=None
+        for name,endpoint in sources:
+            try:
+                candidate=Rpc(endpoint)
+                if as_int(candidate.call("eth_chainId",[]))!=CHAIN:
+                    raise ValueError("WRONG_LOG_CHAIN")
+                canaries=verify_public_log_provider(candidate,topics)
+                log_rpc=candidate
+                status["log_provider"]=name
+                status["public_log_canaries"]=canaries
+                break
+            except Exception as exc:
+                diagnostics.append(dict(provider=name,
+                    failure_code=str(exc)[:100] if
+                    str(exc).startswith(("RPC_","PUBLIC_LOG_PROVIDER_","WRONG_LOG_CHAIN"))
+                    else type(exc).__name__))
+        status["log_provider_preflight_attempts"]=diagnostics
+        if log_rpc is None:
+            raise ValueError("NO_LOG_PROVIDER_PASSED_HISTORICAL_CANARIES")
         pool=census(log_rpc,out,args,topics,history_rpc=rpc)
         calc=scan_calculator_events(log_rpc,out,args,topics,pool["logs"],
                                     history_rpc=rpc)
@@ -729,7 +776,9 @@ def main():
              if k not in ("provider_calls","provider_failures")},indent=2),flush=True)
     except Exception as exc:
         status.update(status="FAILED_OR_PARTIAL",failure=type(exc).__name__,
-                      error_code=str(exc)[:100] if isinstance(exc,ValueError) else "REDACTED")
+                      error_code=str(exc)[:100] if isinstance(exc,(ValueError,RuntimeError))
+                      and (str(exc).startswith(("RPC_","NO_LOG_PROVIDER","INVALID_","POOL_","START_"))
+                           or isinstance(exc,ValueError)) else "REDACTED")
         print(json.dumps({"status":status["status"],"failure":status["failure"]}),flush=True)
     finally:
         save_json(out/"SUMMARY.json",status)
