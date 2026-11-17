@@ -534,7 +534,24 @@ def write_panel(out, rows, event_rows,topics):
             matched=(record.get("transaction_type")==kind and
                      record.get("receipt_accounting_status")=="RECEIPT_ACCOUNTING_MATCH"
                      and len(actions)==1)
-            fee=(record.get("actual_fee_raw") if matched else None)
+            # The fee event is direct historical on-chain data but is not an
+            # independently reconciled canonical receipt. Distinguish the two
+            # evidence tiers; never allocate a tx-total fee among multicalls.
+            fee_group=(["DepositFeePaid"] if kind=="deposit" else
+                       ["RedeemFeePaid","RedeemFeeBurnt"])
+            fee_logs=[x for x in feeevents if x["event"] in fee_group]
+            actors={x.get("actor") for x in fee_logs if x.get("actor")}
+            event_fee=(
+                sum(x["fee_raw"] for x in fee_logs)
+                if len(actions)==1 and fee_logs and
+                   all(x.get("fee_raw") is not None for x in fee_logs) and
+                   len(actors)<=1 else None)
+            fee=(record.get("actual_fee_raw") if matched else event_fee)
+            if matched and event_fee is not None and fee!=event_fee:
+                raise ValueError("CANONICAL_RECEIPT_AND_EMITTED_FEE_DISAGREE")
+            fee_level=("UNAMBIGUOUS_CANONICAL_RECEIPT" if matched else
+                       "POOL_FEE_EVENT_PAIRED_UNRECONCILED" if event_fee is not None
+                       else "NOT_RECONCILED_OR_MULTIACTION")
             amount=action.get("amount_raw")
             panel.append({
                 "tx_hash":txhash,
@@ -543,13 +560,16 @@ def write_panel(out, rows, event_rows,topics):
                 "timestamp_utc":record.get("timestamp_utc"),
                 "transaction_type":kind,
                 "token":action.get("token"),
-                "actor":record.get("actor") if matched else action.get("actor"),
+                "actor":(record.get("actor") if matched else
+                         next(iter(actors),None) if event_fee is not None
+                         else action.get("actor")),
                 "amount_raw":amount,
                 "actual_fee_raw":fee,
                 "effective_fee_rate":str(Decimal(fee)/Decimal(amount)) if fee is not None and amount else None,
                 "fee_events_in_transaction":len(feeevents),
-                "fee_attribution":("UNAMBIGUOUS_CANONICAL_RECEIPT"
-                                   if matched else "NOT_RECONCILED_OR_MULTIACTION"),
+                "fee_attribution":fee_level,
+                "event_paired_fee_raw":event_fee,
+                "fee_amount_from_raw_receipt":bool(matched),
                 "receipt_status":record.get("receipt_accounting_status","NOT_FETCHED"),
                 "project_id":None,"pre_total_raw":None,"pre_project_raw":None,
                 "post_total_raw":None,"post_project_raw":None,
