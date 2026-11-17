@@ -205,3 +205,28 @@ jobs:
             tests/test_gate20.py
             results/gate20/**
           if-no-files-found: error
+
+  designer-menu:
+    name: Gate 21 deposit-scale designer and topic-scope checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify design ordering and feasibility accounting
+        run: python3 -m unittest discover -s tests -p 'test_gate21.py' -v
+      - name: Enumerate approved scale menu with endogenous routing
+        run: python3 scripts/gate21_designer.py --out results/gate21
+      - name: Archive model scope and synthetic design certificates
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gate21-designer-menu
+          path: |
+            docs/GATE21*
+            config/research_scope.json
+            scripts/gate21_designer.py
+            tests/test_gate21.py
+            results/gate21/**
+          if-no-files-found: error

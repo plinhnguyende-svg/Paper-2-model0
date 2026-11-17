@@ -1,10 +1,27 @@
 # Biochar ReFi — smart-contract economic mechanism research
 
+## Current research entry points (Gate 21)
+
+- [Topic, smart-contract role and full RQ/proof map (Vietnamese)](docs/GATE21_RESEARCH_MAP_VI.md)
+- [Deposit-scale designer and scoped proofs](docs/GATE21_DESIGNER_PROOFS.md)
+- [Gate 21 results](docs/GATE21_RESULTS.md)
+- [Partial-pooling baseline](docs/GATE20_PARTIAL_POOLING_PROOFS.md)
+- [Machine-readable scope](config/research_scope.json)
+
+The default economic baseline allows partial venue allocation. Gate 19's lower-output
+result is a conditional all-output contrast, not a general pooling claim.
+The current designer chooses a source-permitted depositFeeScale from a finite menu;
+commercial beta and pre-production finance are separate assumed contracts/constraints.
+No functional optimal mechanism, governance equilibrium or verified producer financing
+is established. Offline economic checks and historical transaction evidence have
+separate CI status.
+
+
 **This working tree is intentionally separated from the previous Paper-2
 N-H / S-H / F-H perishable-food simulation.**
 
-It contains **only** the Toucan CHAR protocol source validation and
-deployment-state audit. The earlier SCM project remains unchanged on `main`.
+It contains the CHAR economic models, source/deployment audit and reproducible
+synthetic design experiments. The earlier SCM project remains unchanged on `main`.
 
 ## Research boundary
 
@@ -20,7 +37,7 @@ deployment-state audit. The earlier SCM project remains unchanged on `main`.
 ## Run
 
 ```bash
-git clone --branch research/char-refi-standalone \
+git clone --branch research/char-evm-verification-pr \
   https://github.com/plinhnguyende-svg/Paper-2-model0.git
 cd Paper-2-model0
 mkdir -p lib

@@ -1,0 +1,17 @@
+{
+  "version": "Gate21-2026-11-17",
+  "topic": "Economic Design of Smart-Contract Carbon Pools: Participation, Value Allocation, and Upstream Transmission in Biochar Supply Chains",
+  "central_object": "executable fee, transaction and allocation rules; not a generic blockchain benefit term",
+  "research_questions": {
+    "RQ1": "How do inventory-dependent fees and execution rules shape participation and routing?",
+    "RQ2": "How should a designer choose economic rules under composition and budget constraints?",
+    "RQ3": "When does monetization transmit into producer income and physical supply?"
+  },
+  "default_baseline": "Gate20 partial venue allocation with fixed initial state, exogenous prices, enforceable procurement rights and contractual beta",
+  "designer_scope": "Gate21 known-state depositFeeScale choice in a 30-value approved menu; normative output objective, assumed HHI limit and recipient token budget",
+  "commitment": "one-horizon commitment assumed; not implied by owner permissions",
+  "conditional_contrast": "Gate19 all-output routing can reduce output; this is not robust to Gate20 partial allocation and is not the general headline",
+  "offchain_primitives": ["commercial beta", "baseline procurement price", "pre-production liquidity", "outside market access", "physical verification yield"],
+  "open_questions": ["continuous or function-space fee optimum", "governance equilibrium", "source-bytecode equivalence", "whole-pool transaction matching", "producer attribution", "commercial pass-through identification", "causal environmental effect", "literature novelty closure"],
+  "primary_reader_entry": "docs/GATE21_RESEARCH_MAP_VI.md"
+}
