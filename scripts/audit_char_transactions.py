@@ -27,7 +27,7 @@ class Rpc:
         self.out=out;self.failures=[];self.providers=[];self.cursor=0
         configured=os.environ.get('BASE_RPC_URL')
         choices=([('configured',configured)] if configured else [])+[
-            ('publicnode','https://base-rpc.publicnode.com'),('drpc','https://base.drpc.org'),('base_public','https://mainnet.base.org')]
+            ('drpc','https://base.drpc.org'),('publicnode','https://base-rpc.publicnode.com'),('base_public','https://mainnet.base.org')]
         for name,url in choices:
             try:
                 if int(self.direct(url,'eth_chainId',[]),16)!=8453:raise ValueError('wrong chain')
@@ -98,7 +98,7 @@ def main():
         if not candidates:
             summary['scan_status']='IN_PROGRESS';complete=True
             # Same declared historical window, with wider batches and method failover.
-            windows=[(args.start,args.end,10000),(13000000,14000000,10000)]
+            windows=[(args.start,args.end,1000),(13190000,13210000,1000)]
             summary['discovery_windows']=[dict(start=a,end=b,chunk=c) for a,b,c in windows]
             chunks=[(a,min(a+c-1,b)) for lo,b,c in windows for a in range(lo,b+1,c)]
             for start,end in chunks:
