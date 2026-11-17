@@ -18,7 +18,7 @@ struct FeeDistributionGate25 {
 interface IPoolGate25 {
     function feeCalculator() external view returns (address);
     function totalTCO2Supply() external view returns (uint256);
-    function totalPerProjectSupply(address project) external view returns (uint256);
+    function totalPerProjectSupply(uint256 projectId) external view returns (uint256);
 }
 
 interface ICalculatorGate25 {
@@ -63,6 +63,7 @@ contract HistoricalCHARExactFeeForkTest {
         uint256 blockNumber,
         uint256 totalInventoryRaw,
         uint256 projectInventoryRaw,
+        uint256 onchainProjectId,
         address activeImplementation,
         bytes32 implementationCodeHash,
         address activeCalculator,
@@ -106,10 +107,30 @@ contract HistoricalCHARExactFeeForkTest {
         require(module != address(0) && module.code.length > 0,
                 "MISSING_ACTIVE_FEE_CALCULATOR");
         uint256 total = pool.totalTCO2Supply();
-        uint256 current = pool.totalPerProjectSupply(token);
+        // Gate 25 correction: the historical pool's actual callTracer uses
+        // 0x875bf3b5(uint256 projectId), NOT totalPerProjectSupply(address).
+        // The historical calculator derives this uint256 ID from the credit
+        // token metadata getter 0x3633f35f. Its return is a dynamic tuple:
+        // offset=0x20 and the fourth static tuple word is project ID.
+        (bool metaOk, bytes memory metadata) = token.staticcall(hex"3633f35f");
+        require(metaOk && metadata.length >= 160, "TCO2_METADATA_UNAVAILABLE");
+        uint256 tupleOffset;
+        uint256 projectId;
+        assembly {
+            tupleOffset := mload(add(metadata, 0x20))
+            projectId := mload(add(metadata, 0xa0))
+        }
+        require(tupleOffset == 32 && projectId > 0, "INVALID_TCO2_METADATA_LAYOUT");
+        // Calling this selector was directly observed in the archived deposit
+        // callTracer; the raw project inventory is not an ERC20 balance proxy.
+        (bool invOk, bytes memory invRaw) =
+            POOL.staticcall(abi.encodeWithSelector(bytes4(0x875bf3b5), projectId));
+        require(invOk && invRaw.length == 32, "PROJECT_ID_INVENTORY_UNAVAILABLE");
+        uint256 current = abi.decode(invRaw, (uint256));
         require(current <= total, "INVALID_PRESTATE_INVENTORY");
-        emit HistoricalPrestate(txHash, block.number, total, current, implementation,
-                                implementation.codehash, module, module.codehash);
+        emit HistoricalPrestate(txHash, block.number, total, current, projectId,
+                                implementation, implementation.codehash,
+                                module, module.codehash);
         calc = ICalculatorGate25(module);
         emit HistoricalParameters(txHash, calc.depositFeeScale(),
                                   calc.depositFeeRatioScale(),
