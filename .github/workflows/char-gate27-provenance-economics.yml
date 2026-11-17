@@ -40,7 +40,7 @@ jobs:
         run: |
           set -euo pipefail
           npm install --no-audit --no-fund --silent --prefix gate27/compiler019 solc@0.8.19
-          npm install --no-audit --no-fund --silent --prefix gate27/compiler014 solc@0.8.14
+          npm install --no-audit --no-fund --silent --prefix gate27/compiler014 solc@0.8.14-fixed
       - name: Independently rebuild three verified Standard JSON inputs
         run: |
           set -euo pipefail
