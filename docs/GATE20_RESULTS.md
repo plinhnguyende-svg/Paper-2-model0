@@ -38,6 +38,11 @@ Eight tests cover the old counterexample, independent joint quantity/venue grid,
 fee-potential telescoping, monotone premium, beta monotonicity, finance, beta-zero
 intermediary participation and cases with no attractive pool opportunity.
 
+For beta=1, surplus-maximizing routing is an explicit contract/tie-break convention:
+the intermediary retains none of the incremental surplus and is otherwise indifferent.
+For beta<1 it follows from intermediary margin maximization. The primary example
+uses beta=.25 and does not rely on this endpoint convention.
+
 ```sh
 python3 -m unittest discover -s tests -p 'test_gate20.py' -v
 python3 scripts/gate20_partial_pooling.py --out results/gate20

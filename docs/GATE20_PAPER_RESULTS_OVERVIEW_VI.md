@@ -132,3 +132,10 @@ tiêu kinh tế nào được tối ưu, ràng buộc nào có nền tảng th�
 benchmark ở những điều kiện nào. Giữ endogenous pricing và governance game ngoài
 baseline cho đến khi cần thiết. Tiếp tục transaction matching như evidence workstream
 riêng, không dùng lỗi RPC làm lý do giữ một kết quả lý thuyết không robust.
+
+## Ghi chú incentive tại endpoint
+
+Khi beta<1, intermediary còn hưởng một phần premium nên tối ưu margin dẫn đến
+lot pooling tối ưu. Khi beta=1, cần mandate theo hợp đồng hoặc tie-break ưu tiên
+producer vì intermediary không còn hưởng phần tăng thêm. Các phép tính tại beta=1
+dùng quy ước này; ví dụ chính beta=.25 không cần dựa vào endpoint đó.

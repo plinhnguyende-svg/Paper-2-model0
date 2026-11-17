@@ -33,6 +33,11 @@ incremental surplus of the pooled portion; unused credits are not destroyed.
 
 Intermediary margin is (v-b0)eta*y+(1-beta)V(y)>=0 when 0<=b0<=v.
 At beta=0 the producer's output can remain unchanged while intermediary still pools.
+For beta<1, maximizing intermediary margin selects the same z as maximizing
+incremental surplus. At beta=1 the intermediary is indifferent about this surplus:
+the contract must mandate surplus-maximizing routing or use an explicit
+producer-favoring tie-break. Beta=1 computations use that convention; optimal
+routing is not a strict incentive conclusion at this endpoint.
 
 ## 2. Lot optimization for the source-real formula
 
@@ -155,6 +160,24 @@ Beta=0 yields the outside production optimum. If the outside optimum already equ
 the cash bound, production remains at that bound for all beta: partial pooling
 does not itself supply pre-production finance. A plateau in output can also arise
 from monetization saturation, even when working capital is abundant.
+
+### Activation and strict expansion conditions
+
+For beta>0 define V_active0=max_y[U_out(y)+beta H(y)] before gas and
+V_out=max_y U_out(y). Then g_critical=(V_active0-V_out)/beta>=0.
+Active pooling is globally selected exactly when g<g_critical under the outside
+tie-break. Changing fixed g shifts the active branch's value, not its maximizer.
+At equality, branch maxima tie; their production quantities need not differ.
+
+With this tie convention, strictly higher output requires beta>0, selected active
+pooling, a cash-slack outside optimum, and eta*y_out<z_star. These conditions are
+also sufficient in the source-real family. At a positive cash-slack outside optimum,
+U_out' is zero and H'(y_out)>0 makes the active derivative positive, so its
+maximizer is strictly larger. If y_out=0, active selection itself requires a
+positive maximizer because U_active(0)=-beta*g<0 while abstention gives zero. If instead
+baseline supply already reaches z_star, or baseline output is at the cash bound,
+the output floor plus saturation/cash cap imply unchanged production even when
+the producer receives additional income.
 
 ## 7. Same-project self-batching does not reduce ideal total fees
 
