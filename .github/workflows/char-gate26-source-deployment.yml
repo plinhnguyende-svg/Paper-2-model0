@@ -74,6 +74,45 @@ jobs:
           done
           cd "$ROOT" || exit 1
           test "$(find gate26/compiled -name '*.json' | wc -l)" -ge 1
+      - name: Test limited historically plausible source revisions separately
+        run: |
+          set -u
+          ROOT="$PWD"
+          cd gate26/upstream || exit 1
+          # These are alternative source hypotheses, not the pinned-source proof.
+          # The Feb 2024 revisions fetch projectTokenId from getVintageData(),
+          # matching the historical Gate 25 project-ID call semantics.
+          for sha in \
+            1faac76f50db861331905391cb95b55d278391d9 \
+            eb2b6278d322f97f387869db56093f30e44b15c8 \
+            2ea68bd9b9da3c77debc135a6df76cc42fe89c60 \
+            7737f27062d5eaea5ada56efc22ee9264be62d95; do
+            short="${sha:0:8}"
+            if ! git checkout -q --detach "$sha"; then
+              echo "$sha CHECKOUT_FAILED" >> "$ROOT/gate26/HISTORY_BUILD_STATUS.txt"
+              continue
+            fi
+            if ! git submodule update -q --init --recursive; then
+              echo "$sha SUBMODULE_CHECKOUT_FAILED" >> "$ROOT/gate26/HISTORY_BUILD_STATUS.txt"
+              continue
+            fi
+            {
+              echo "source $sha"
+              git submodule status
+            } >> "$ROOT/gate26/HISTORY_DEPENDENCIES.txt"
+            for mode in legacy viair; do
+              label="hist_${short}_${mode}_opt200"
+              if [[ "$mode" = "viair" ]]; then opt=(--via-ir --optimize --optimizer-runs 200); else opt=(--optimize --optimizer-runs 200); fi
+              if forge build src/FeeCalculator.sol --use 0.8.19 --force "${opt[@]}" > "$ROOT/gate26/build_logs/$label.log" 2>&1 \
+                  && test -s out/FeeCalculator.sol/FeeCalculator.json; then
+                cp out/FeeCalculator.sol/FeeCalculator.json "$ROOT/gate26/compiled/$label.json"
+                echo "$sha $mode BUILD_PASS" | tee -a "$ROOT/gate26/HISTORY_BUILD_STATUS.txt"
+              else
+                echo "$sha $mode BUILD_FAILED" | tee -a "$ROOT/gate26/HISTORY_BUILD_STATUS.txt"
+              fi
+            done
+          done
+          cd "$ROOT" || exit 1
       - name: Audit deployed snapshots, codehash anchors and candidate runtime
         env:
           BASE_RPC_URL: ${{ secrets.BASE_RPC_URL }}
@@ -91,6 +130,8 @@ jobs:
           path: |
             gate26/DEPENDENCY_MANIFEST.txt
             gate26/BUILD_STATUS.txt
+            gate26/HISTORY_BUILD_STATUS.txt
+            gate26/HISTORY_DEPENDENCIES.txt
             gate26/AUDIT_CONCLUSION.log
             gate26/build_logs/**
             gate26/compiled/**
