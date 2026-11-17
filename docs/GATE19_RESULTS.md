@@ -1,5 +1,10 @@
 # Gate 19 — Result and evidence status
 
+> Gate 20 update: the lower-output result below is conditional on all-output routing.
+> Allowing partial pooling restores the outside-output floor under the stated
+> unchanged outside-sale terms. See [Gate 20 robustness](GATE20_PARTIAL_POOLING_PROOFS.md).
+
+
 Main deliverable: [Endogenous production model and proofs](GATE19_ENDOGENOUS_PRODUCTION.md).
 This extends the Gate 18 fixed-premium producer module without claiming observed
 producer royalties, blockchain superiority or a complete strategic market equilibrium.

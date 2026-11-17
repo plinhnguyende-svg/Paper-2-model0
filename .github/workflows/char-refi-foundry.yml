@@ -181,3 +181,27 @@ jobs:
             tests/test_gate19.py
             results/gate19/**
           if-no-files-found: error
+
+  partial-pooling:
+    name: Gate 20 partial pooling and self-batching robustness
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Check partial venue allocation and fee-potential identity
+        run: python3 -m unittest discover -s tests -p 'test_gate20.py' -v
+      - name: Compare partial and all-output scenarios
+        run: python3 scripts/gate20_partial_pooling.py --out results/gate20
+      - name: Archive model qualifications and synthetic comparison
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gate20-partial-pooling
+          path: |
+            docs/GATE20*
+            scripts/gate20_partial_pooling.py
+            tests/test_gate20.py
+            results/gate20/**
+          if-no-files-found: error

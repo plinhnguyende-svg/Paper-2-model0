@@ -1,0 +1,8 @@
+{
+  "scenarios": 504,
+  "all_output_lower_output_cases": 6,
+  "partial_pooling_lower_output_cases": 0,
+  "partial_pooling_channel_cases": 12,
+  "producer_profit_dominance_violations": 0,
+  "scope": "synthetic real-formula comparison; not deployed EVM or actual producer behavior"
+}

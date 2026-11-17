@@ -1,5 +1,10 @@
 # Gate 19 — Endogenous production and channel choice
 
+> Gate 20 update: the lower-output result below is conditional on all-output routing.
+> Allowing partial pooling restores the outside-output floor under the stated
+> unchanged outside-sale terms. See [Gate 20 robustness](GATE20_PARTIAL_POOLING_PROOFS.md).
+
+
 Date: 2026-11-17. Extends Gate 18; source-real analytical model, not a deployed
 transaction finding. Main model: one producer/intermediary contract, one project,
 one all-output deposit batch, fixed initial inventory and exogenous CHAR price.
