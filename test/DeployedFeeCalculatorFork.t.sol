@@ -3,6 +3,7 @@ pragma solidity 0.8.19;
 
 import {FeeDistribution} from "dynamic-fee-pools/src/interfaces/IFeeCalculator.sol";
 import {MockPool} from "../src/MockPool.sol";
+import {MockTCO2} from "../src/MockTCO2.sol";
 
 interface ICalculatorAtBlock {
     function calculateDepositFees(address pool, address tco2, uint256 amount)
@@ -49,17 +50,18 @@ contract DeployedFeeCalculatorForkTest {
     function _redemption(
         ICalculatorAtBlock c,
         MockPool p,
+        address token,
         uint256 amount
     ) internal view returns (FeeDistribution memory) {
         address[] memory tokens = new address[](1);
         uint256[] memory amounts = new uint256[](1);
-        tokens[0] = TOKEN;
+        tokens[0] = token;
         amounts[0] = amount;
         return c.calculateRedemptionFees(address(p), tokens, amounts);
     }
 
-    function redemptionProbe(address pool, uint256 amount) external view returns (uint256) {
-        return _total(_redemption(ICalculatorAtBlock(PUBLISHED_CALCULATOR), MockPool(pool), amount));
+    function redemptionProbe(address pool, address token, uint256 amount) external view returns (uint256) {
+        return _total(_redemption(ICalculatorAtBlock(PUBLISHED_CALCULATOR), MockPool(pool), token, amount));
     }
 
     function testDeployedCalculatorIsReadableAndRecipientsSumTo100() public {
@@ -95,10 +97,11 @@ contract DeployedFeeCalculatorForkTest {
 
     function testDeployedSingleProjectRateAndRounding() public {
         ICalculatorAtBlock c = ICalculatorAtBlock(PUBLISHED_CALCULATOR);
-        MockPool p = new MockPool(TOKEN);
+        MockTCO2 token = new MockTCO2(777);
+        MockPool p = new MockPool(address(token));
         p.setInventory(100e18, 100e18);
-        uint256 deposit = _total(c.calculateDepositFees(address(p), TOKEN, 10e18));
-        uint256 redemption = _total(_redemption(c, p, 10e18));
+        uint256 deposit = _total(c.calculateDepositFees(address(p), address(token), 10e18));
+        uint256 redemption = _total(_redemption(c, p, address(token), 10e18));
         uint256 depositRate = uint256(c.singleAssetDepositRelativeFee());
         uint256 redemptionRate = uint256(c.singleAssetRedemptionRelativeFee());
         require(depositRate > 0 && redemptionRate > 0, "single-project rate zero");
@@ -106,9 +109,33 @@ contract DeployedFeeCalculatorForkTest {
         require(redemption == 10e18 * redemptionRate / 1e18, "single-project redemption EVM mismatch");
     }
 
+    function testDominantDepositRevertHasCorrectReason() public {
+        ICalculatorAtBlock c = ICalculatorAtBlock(PUBLISHED_CALCULATOR);
+        MockTCO2 token = new MockTCO2(777);
+        MockPool p = new MockPool(address(token));
+        p.setInventory(100e18, 101e18);
+        int256 ratio = c.depositFeeRatioScale();
+        // Only enforce this expectation for a deployed ratio that actually excludes
+        // a 110/111 post-deposit project share, as observed for a ratio of 1.25.
+        if (ratio >= 11e17) {
+            try c.calculateDepositFees(address(p), address(token), 10e18)
+                returns (FeeDistribution memory) {
+                revert("expected outside-range revert");
+            } catch Error(string memory reason) {
+                require(
+                    keccak256(bytes(reason)) == keccak256(bytes("Deposit outside range")),
+                    "reverted for wrong reason"
+                );
+            } catch (bytes memory) {
+                revert("unexpected custom/panic revert");
+            }
+        }
+    }
+
     function testNearDominantDepositDomainAndBoundaryGrid() public {
         ICalculatorAtBlock c = ICalculatorAtBlock(PUBLISHED_CALCULATOR);
-        MockPool p = new MockPool(TOKEN);
+        MockTCO2 token = new MockTCO2(777);
+        MockPool p = new MockPool(address(token));
         uint256[8] memory others = [
             uint256(1e18), uint256(1e17), uint256(1e16), uint256(1e12),
             uint256(1e9), uint256(1e6), uint256(1), uint256(0)
@@ -121,7 +148,7 @@ contract DeployedFeeCalculatorForkTest {
             } catch {
                 emit EVMFeeProbe(others[i], true, true, 0);
             }
-            try this.redemptionProbe(address(p), 10e18) returns (uint256 fee) {
+            try this.redemptionProbe(address(p), address(token), 10e18) returns (uint256 fee) {
                 emit EVMFeeProbe(others[i], false, false, fee);
             } catch {
                 emit EVMFeeProbe(others[i], false, true, 0);
