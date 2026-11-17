@@ -81,11 +81,27 @@ contract SourceCHARBoundaryTest {
         return _total(_redeem(amount));
     }
 
+    function testEVMOneWeiDustDiscontinuity() public {
+        pool.setInventory(100e18, 100e18 + 1);
+        uint256 nearSingleRedemption = _total(_redeem(10e18));
+        uint256 nearSingleDeposit = _total(calculator.calculateDepositFees(address(pool), TOKEN, 10e18));
+        require(nearSingleRedemption == 3e18, "one-wei redemption not dust fee");
+        require(nearSingleDeposit > 3e18, "one-wei deposit not near 36 percent");
+
+        pool.setInventory(100e18, 100e18);
+        require(_total(_redeem(10e18)) == 1e18, "single project redemption not 10 percent");
+        require(
+            _total(calculator.calculateDepositFees(address(pool), TOKEN, 10e18)) == 1e18,
+            "single project deposit not 10 percent"
+        );
+    }
+
     function testFuzzSingleProjectTenPercent(uint64 amount) public {
-        // integer units are multiplied by 1e18 to avoid dust-fee-reverts
-        if (amount == 0 || amount > 1000) return;
+        // Always execute a nontrivial case: 1-1000 whole tokens.
+        // Previously, most uint64 fuzz inputs exited without checking anything.
+        uint256 units = (uint256(amount) % 1000) + 1;
         pool.setInventory(1000e18, 1000e18);
-        uint256 fee = _total(calculator.calculateDepositFees(address(pool), TOKEN, uint256(amount) * 1e18));
-        require(fee == (uint256(amount) * 1e17), "incorrect flat deposit rate");
+        uint256 fee = _total(calculator.calculateDepositFees(address(pool), TOKEN, units * 1e18));
+        require(fee == units * 1e17, "incorrect flat deposit rate");
     }
 }
