@@ -6,6 +6,8 @@ import os
 from pathlib import Path
 import sys
 import urllib.request
+import urllib.parse
+import urllib.error
 
 CALCULATOR='0x6a4549759c475d845d4ae074b3656dc257490da5'
 POOL='0x20b048fa035d5763685d695e66adf62c5d9f5055'
@@ -46,10 +48,22 @@ def main():
     status=dict(status='BLOCKED_MISSING_BASE_RPC_URL',credential_present=bool(url),full_history='NOT_TESTED',producer_attribution='UNVERIFIED')
     try:
         if not url:return 2
+        status['stage']='endpoint_format'
+        parsed=urllib.parse.urlsplit(url)
+        if parsed.scheme!='https' or not parsed.hostname or any(c.isspace() for c in url):
+            status['failure_code']='EXPECTED_COMPLETE_HTTPS_RPC_URL'
+            status['status']='RPC_CAPABILITY_FAIL'
+            return 1
+        status['endpoint_format']='VALID_HTTPS'
         def call(method,params):
+            status['stage']=method
             body=json.dumps(dict(jsonrpc='2.0',id=1,method=method,params=params)).encode()
             req=urllib.request.Request(url,data=body,headers={'Content-Type':'application/json'})
-            with urllib.request.urlopen(req,timeout=25) as response:payload=json.load(response)
+            try:
+                with urllib.request.urlopen(req,timeout=25) as response:payload=json.load(response)
+            except urllib.error.HTTPError as exc:
+                status['http_status']=exc.code
+                raise
             if payload.get('error') or 'result' not in payload:raise RuntimeError('RPC_RESPONSE_ERROR')
             return payload['result']
         status.update(validate(call,save));status['status']='RPC_CAPABILITY_PASS_SAMPLE_ONLY'
