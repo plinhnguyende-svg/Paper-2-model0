@@ -1,0 +1,24 @@
+{
+  "scenarios": 504,
+  "pool_selected": 262,
+  "lower_output_despite_pool_option": 6,
+  "example": {
+    "benchmark": "H0_parameter_counterfactual",
+    "q": "70",
+    "v": "0.55",
+    "beta": "0.25",
+    "L": "unbounded",
+    "channel": "pool",
+    "y": "33.8296354439873021717648017790267131047105533958999206883033596045498378858",
+    "outside_y": "4E+1",
+    "output_change": "-6.170364556012697828235198221",
+    "profit": "8.04320764898858480153683352848574730095854171610900643426671605236412606305",
+    "frozen_at_outside_lot_y": "40",
+    "pool_profit_gap": "0.04320764898858480153683352848574730095854171610900643426671605236412606305",
+    "numerical_tie": false
+  },
+  "formula_scope": "REAL source formula; H0 is parameterized counterfactual, not deployed oracle",
+  "economic_scope": "fixed contract beta and exogenous price; no direct producer royalties",
+  "global_solution": "analytic reduction to two strictly concave branches; 200-step Decimal root bisection",
+  "empirical_status": "NOT_IDENTIFIED"
+}

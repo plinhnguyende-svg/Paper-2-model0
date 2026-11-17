@@ -157,3 +157,27 @@ jobs:
           name: gate18-original-economic-replay
           path: results/gate18/replay_ci/**
           if-no-files-found: error
+
+  endogenous-production:
+    name: Gate 19 endogenous production and channel choice (real model)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Check global-branch solver and economic counterexamples
+        run: python3 -m unittest discover -s tests -p 'test_gate19.py' -v
+      - name: Sweep declared endogenous quantity scenarios
+        run: python3 scripts/gate19_endogenous.py --out results/gate19
+      - name: Archive conditional model and synthetic results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gate19-endogenous-production
+          path: |
+            docs/GATE19*
+            scripts/gate19_endogenous.py
+            tests/test_gate19.py
+            results/gate19/**
+          if-no-files-found: error
