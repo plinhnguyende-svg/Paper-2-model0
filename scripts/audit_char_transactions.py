@@ -27,7 +27,7 @@ class Rpc:
         self.out=out;self.failures=[];self.providers=[];self.cursor=0
         configured=os.environ.get('BASE_RPC_URL')
         choices=([('configured',configured)] if configured else [])+[
-            ('publicnode','https://base-rpc.publicnode.com'),('base_public','https://mainnet.base.org')]
+            ('publicnode','https://base-rpc.publicnode.com'),('drpc','https://base.drpc.org'),('base_public','https://mainnet.base.org')]
         for name,url in choices:
             try:
                 if int(self.direct(url,'eth_chainId',[]),16)!=8453:raise ValueError('wrong chain')
