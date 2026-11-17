@@ -146,24 +146,31 @@ class Rpc:
         self.calls=Counter()
         self.failures=Counter()
     def call(self,method,params):
-        self.calls[method]+=1
         req=urllib.request.Request(self.url,
             data=json.dumps({"jsonrpc":"2.0","id":29,"method":method,
                              "params":params}).encode(),
             headers={"Content-Type":"application/json"})
-        try:
-            with urllib.request.urlopen(req,timeout=24) as response:
-                obj=json.load(response)
-        except Exception as exc:
-            # HTTP status is safe diagnostic metadata; never include request URL,
-            # response body, API key or configured transport exception string.
-            code=("_HTTP_"+str(exc.code)) if hasattr(exc,"code") else "_"+type(exc).__name__
-            self.failures[method+code]+=1
-            raise RuntimeError("RPC_TRANSPORT"+code+"_"+method) from None
-        if not isinstance(obj,dict) or "error" in obj or "result" not in obj:
-            self.failures[method+"_JSONRPC_ERROR"]+=1
-            raise RuntimeError("RPC_METHOD_UNAVAILABLE_OR_LIMITED_"+method)
-        return obj["result"]
+        for attempt in range(5):
+            self.calls[method]+=1
+            try:
+                with urllib.request.urlopen(req,timeout=24) as response:
+                    obj=json.load(response)
+            except Exception as exc:
+                # HTTP status is safe diagnostic metadata. Never include URLs,
+                # response body, provider API key or exception transport text.
+                status=getattr(exc,"code",None)
+                code=("_HTTP_"+str(status)) if status is not None \
+                      else "_"+type(exc).__name__
+                self.failures[method+code]+=1
+                if status==429 and attempt<4:
+                    time.sleep(0.5*(2**attempt))
+                    continue
+                raise RuntimeError("RPC_TRANSPORT"+code+"_"+method) from None
+            if not isinstance(obj,dict) or "error" in obj or "result" not in obj:
+                self.failures[method+"_JSONRPC_ERROR"]+=1
+                raise RuntimeError("RPC_METHOD_UNAVAILABLE_OR_LIMITED_"+method)
+            return obj["result"]
+        raise RuntimeError("RPC_RETRIES_EXHAUSTED_"+method)
 
 
 def ensure_consistency(logs):
