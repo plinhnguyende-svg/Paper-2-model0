@@ -1,0 +1,54 @@
+name: CHAR historical RPC and receipt evidence
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [research/char-refi-standalone]
+    paths:
+      - '.github/workflows/char-transaction-evidence.yml'
+      - 'scripts/check_base_rpc_access.py'
+      - 'scripts/audit_char_transactions.py'
+      - 'scripts/char_receipt_accounting.py'
+      - 'tests/test_char_receipts.py'
+      - 'scripts/audit_char_event_windows.py'
+      - 'tests/test_char_event_windows.py'
+permissions:
+  contents: read
+jobs:
+  transaction-evidence:
+    name: Actual CHAR receipt evidence (separate data gate)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: stable
+      - name: Validate raw receipt accounting with labeled synthetic fixtures
+        run: python3 -m unittest discover -s tests -p 'test_char_receipts.py' -v
+      - name: Validate bounded event coverage and fail-closed canonical checks (synthetic)
+        run: python3 -m unittest discover -s tests -p 'test_char_event_windows.py' -v
+      - name: Verify configured historical RPC capabilities
+        env:
+          BASE_RPC_URL: ${{ secrets.BASE_RPC_URL }}
+        run: python3 scripts/check_base_rpc_access.py transaction_evidence/rpc_preflight
+      - name: Discover and reconcile a bounded actual receipt sample
+        env:
+          BASE_RPC_URL: ${{ secrets.BASE_RPC_URL }}
+        run: python3 scripts/audit_char_transactions.py --start 58000000 --end 58258072 --out transaction_evidence
+      - name: Scan declared historical event windows and reconcile actual receipts
+        env:
+          BASE_RPC_URL: ${{ secrets.BASE_RPC_URL }}
+        run: >-
+          python3 scripts/audit_char_event_windows.py
+          --windows 13826150:13826650,15709320:15709820,58257800:58258072
+          --chunk 20 --max-rpc-calls 240 --max-receipts 48 --min-matched 2
+          --out transaction_evidence/targeted_events
+      - name: Archive actual data and explicit unresolved evidence scope
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: char-actual-receipt-evidence
+          path: transaction_evidence/**
+          if-no-files-found: error

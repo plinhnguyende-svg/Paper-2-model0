@@ -1,0 +1,186 @@
+[
+  {
+    "claim_id": "P1",
+    "prior_gate": "9",
+    "claim": "Deposit and redemption participation thresholds",
+    "evidence_layer": "R economic",
+    "verdict": "RE_DERIVED",
+    "required_scope_or_correction": "Fixed feasible lot and exogenous price; disjoint fee recipients or account for self-rebate"
+  },
+  {
+    "claim_id": "P2",
+    "prior_gate": "9",
+    "claim": "maxFee threshold optimum",
+    "evidence_layer": "R economic",
+    "verdict": "QUALIFIED",
+    "required_scope_or_correction": "Compare submission with abstention; support gaps and atoms can make cap nonunique; cap must be admissible"
+  },
+  {
+    "claim_id": "P3",
+    "prior_gate": "8",
+    "claim": "HHI deposit identity",
+    "evidence_layer": "R accounting",
+    "verdict": "RE_DERIVED",
+    "required_scope_or_correction": "Q positive; gross project-level underlying; no behavioral or causal conclusion"
+  },
+  {
+    "claim_id": "P4D",
+    "prior_gate": "9",
+    "claim": "Source-default deposit limit .36x",
+    "evidence_layer": "R formula",
+    "verdict": "RE_DERIVED",
+    "required_scope_or_correction": "Source .18 and .99 only; not H0 and not a historical full-pool finding"
+  },
+  {
+    "claim_id": "P4R",
+    "prior_gate": "9",
+    "claim": "Redemption limit zero",
+    "evidence_layer": "R formula",
+    "verdict": "QUALIFIED",
+    "required_scope_or_correction": "Ideal real limit only; cannot replace EVM dust fallback or zero-fee rejection"
+  },
+  {
+    "claim_id": "P4H",
+    "prior_gate": "16",
+    "claim": "Dynamic deposit domain below 80 percent",
+    "evidence_layer": "D checkpoint plus R domain",
+    "verdict": "QUALIFIED",
+    "required_scope_or_correction": "Only dynamic branch at ratio 1.25; single-project branch bypasses; EVM integer threshold separate"
+  },
+  {
+    "claim_id": "P5",
+    "prior_gate": "11",
+    "claim": "Dynamic fee monotonicity",
+    "evidence_layer": "R calculus",
+    "verdict": "RE_DERIVED",
+    "required_scope_or_correction": "Hold Q and x fixed; interior admissible raw formula; not all EVM reachable paths"
+  },
+  {
+    "claim_id": "P5C",
+    "prior_gate": "11",
+    "claim": "Clipped and limit-extension continuity",
+    "evidence_layer": "R formula",
+    "verdict": "QUALIFIED",
+    "required_scope_or_correction": "Source defaults only; weak monotonicity; no deployed implementation or performance theorem"
+  },
+  {
+    "claim_id": "S10",
+    "prior_gate": "10",
+    "claim": "Smoothing and precision experiments",
+    "evidence_layer": "S reported",
+    "verdict": "ORIGINAL_REPLAYED",
+    "required_scope_or_correction": "Original default numerical run and checks replay; real-formula and synthetic scope retained"
+  },
+  {
+    "claim_id": "S11",
+    "prior_gate": "11",
+    "claim": "56 policies and 6720 replications",
+    "evidence_layer": "S reported",
+    "verdict": "ORIGINAL_REPLAYED",
+    "required_scope_or_correction": "6720 replications and original finite-grid ties reproduced; paired volume intervals still include zero"
+  },
+  {
+    "claim_id": "P6A",
+    "prior_gate": "12",
+    "claim": "Unique global producer choice",
+    "evidence_layer": "C economic",
+    "verdict": "RE_DERIVED",
+    "required_scope_or_correction": "Fixed expected premium; fixed L; eta positive k positive c nonnegative; no endogenous Delta of y"
+  },
+  {
+    "claim_id": "P6B",
+    "prior_gate": "12",
+    "claim": "Strict negative fee-output derivative",
+    "evidence_layer": "C economic",
+    "verdict": "QUALIFICATION_RETAINED",
+    "required_scope_or_correction": "Original appendix already requires positive output and fixed success probability pi; simplified summary incomplete"
+  },
+  {
+    "claim_id": "P6C",
+    "prior_gate": "12",
+    "claim": "Working-capital barrier",
+    "evidence_layer": "C economic",
+    "verdict": "RE_DERIVED",
+    "required_scope_or_correction": "Fixed pre-production liquidity and no pledgeable advance; later receipts alone do not relax L"
+  },
+  {
+    "claim_id": "P6D",
+    "prior_gate": "12",
+    "claim": "Upstream-downstream tradeoff",
+    "evidence_layer": "C economic",
+    "verdict": "CONDITIONAL_DIRECTION_ONLY",
+    "required_scope_or_correction": "Separate buyer and producer responses; no integrated strategic equilibrium or quantified welfare theorem"
+  },
+  {
+    "claim_id": "P7",
+    "prior_gate": "13",
+    "claim": "Beta not point identified",
+    "evidence_layer": "C identification",
+    "verdict": "RE_DERIVED_GENERIC",
+    "required_scope_or_correction": "Unknown base contract price can offset beta; no observed-data identified set computed"
+  },
+  {
+    "claim_id": "S13",
+    "prior_gate": "13",
+    "claim": "20 scenarios and production-effect ranges",
+    "evidence_layer": "S reported",
+    "verdict": "ORIGINAL_REPLAYED",
+    "required_scope_or_correction": "20 original synthetic cases and five built-in checks replay; not actual producer data"
+  },
+  {
+    "claim_id": "E16",
+    "prior_gate": "16",
+    "claim": "Source EVM and deployed calculator tests",
+    "evidence_layer": "E and D",
+    "verdict": "INHERITED_CHECKPOINT_EVIDENCE",
+    "required_scope_or_correction": "Run 44000844914 and later PR runs; not source-bytecode equality or full transaction proof"
+  },
+  {
+    "claim_id": "T17",
+    "prior_gate": "17",
+    "claim": "Actual fee-to-transfer reconciliation",
+    "evidence_layer": "T empirical",
+    "verdict": "OPEN",
+    "required_scope_or_correction": "Public eth_getLogs returned HTTP 429; no verified transaction sample extracted"
+  },
+  {
+    "claim_id": "P8",
+    "prior_gate": "18",
+    "claim": "Best policy in declared finite search",
+    "evidence_layer": "S computation",
+    "verdict": "NUMERICAL_ENUMERATION_COMPLETE",
+    "required_scope_or_correction": "Seven policies 36 independent synthetic scenarios six actions; no continuum theorem"
+  },
+  {
+    "claim_id": "ALLOC",
+    "prior_gate": "5-13",
+    "claim": "Fee recipient shares imply producer financing",
+    "evidence_layer": "C empirical",
+    "verdict": "NOT_ESTABLISHED",
+    "required_scope_or_correction": "Gross recipient shares differ from net redemption receipts and commercial beta"
+  },
+  {
+    "claim_id": "P9",
+    "prior_gate": "9",
+    "claim": "Small-trade fee slopes and redemption HHI",
+    "evidence_layer": "R calculus and accounting",
+    "verdict": "RE_DERIVED",
+    "required_scope_or_correction": "Real source-default formulas; executable minimum amounts not implied"
+  },
+  {
+    "claim_id": "P10",
+    "prior_gate": "10",
+    "claim": "Quadratic minority-entry and redemption asymptotics",
+    "evidence_layer": "R Taylor expansion",
+    "verdict": "RE_DERIVED",
+    "required_scope_or_correction": "Fixed positive inventory; no EVM finite-epsilon claim"
+  },
+  {
+    "claim_id": "P11",
+    "prior_gate": "11",
+    "claim": "Anchored smoothing violates intended monotonicity",
+    "evidence_layer": "R boundary argument",
+    "verdict": "RE_DERIVED",
+    "required_scope_or_correction": "Source-default ideal formulas; not a deployed exploit"
+  }
+]

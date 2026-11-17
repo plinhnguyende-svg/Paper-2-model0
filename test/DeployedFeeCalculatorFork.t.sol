@@ -3,6 +3,7 @@ pragma solidity 0.8.19;
 
 import {FeeDistribution} from "dynamic-fee-pools/src/interfaces/IFeeCalculator.sol";
 import {MockPool} from "../src/MockPool.sol";
+import {MockTCO2} from "../src/MockTCO2.sol";
 
 interface ICalculatorAtBlock {
     function calculateDepositFees(address pool, address tco2, uint256 amount)
@@ -27,7 +28,6 @@ interface ICharPoolAtBlock {
 contract DeployedFeeCalculatorForkTest {
     address constant PUBLISHED_CALCULATOR = 0x6A4549759C475d845d4AE074B3656dC257490DA5;
     address constant CHAR_POOL = 0x20b048fA035D5763685D695e66aDF62c5D9F5055;
-    address constant TOKEN = address(0xA11CE);
 
     event HistoricalParameters(
         address calculator,
@@ -49,29 +49,31 @@ contract DeployedFeeCalculatorForkTest {
     function _redemption(
         ICalculatorAtBlock c,
         MockPool p,
+        address token,
         uint256 amount
     ) internal view returns (FeeDistribution memory) {
         address[] memory tokens = new address[](1);
         uint256[] memory amounts = new uint256[](1);
-        tokens[0] = TOKEN;
+        tokens[0] = token;
         amounts[0] = amount;
         return c.calculateRedemptionFees(address(p), tokens, amounts);
     }
 
-    function redemptionProbe(address pool, uint256 amount) external view returns (uint256) {
-        return _total(_redemption(ICalculatorAtBlock(PUBLISHED_CALCULATOR), MockPool(pool), amount));
+    function redemptionProbe(address pool, address token, uint256 amount) external view returns (uint256) {
+        return _total(_redemption(ICalculatorAtBlock(PUBLISHED_CALCULATOR), MockPool(pool), token, amount));
     }
 
     function testDeployedCalculatorIsReadableAndRecipientsSumTo100() public {
         require(PUBLISHED_CALCULATOR.code.length != 0, "no calculator bytecode at fork block");
         ICalculatorAtBlock c = ICalculatorAtBlock(PUBLISHED_CALCULATOR);
         address active = address(0);
-        // The published calculator address need not be active for CHAR at the block.
+        // This suite is pinned to a checkpoint where the calculator must be active.
         if (CHAR_POOL.code.length != 0) {
             try ICharPoolAtBlock(CHAR_POOL).feeCalculator() returns (address a) {
                 active = a;
             } catch {}
         }
+        require(active == PUBLISHED_CALCULATOR, "calculator not active for CHAR");
         emit HistoricalParameters(
             PUBLISHED_CALCULATOR,
             active,
@@ -95,10 +97,11 @@ contract DeployedFeeCalculatorForkTest {
 
     function testDeployedSingleProjectRateAndRounding() public {
         ICalculatorAtBlock c = ICalculatorAtBlock(PUBLISHED_CALCULATOR);
-        MockPool p = new MockPool(TOKEN);
+        MockTCO2 token = new MockTCO2(777);
+        MockPool p = new MockPool(address(token));
         p.setInventory(100e18, 100e18);
-        uint256 deposit = _total(c.calculateDepositFees(address(p), TOKEN, 10e18));
-        uint256 redemption = _total(_redemption(c, p, 10e18));
+        uint256 deposit = _total(c.calculateDepositFees(address(p), address(token), 10e18));
+        uint256 redemption = _total(_redemption(c, p, address(token), 10e18));
         uint256 depositRate = uint256(c.singleAssetDepositRelativeFee());
         uint256 redemptionRate = uint256(c.singleAssetRedemptionRelativeFee());
         require(depositRate > 0 && redemptionRate > 0, "single-project rate zero");
@@ -106,22 +109,53 @@ contract DeployedFeeCalculatorForkTest {
         require(redemption == 10e18 * redemptionRate / 1e18, "single-project redemption EVM mismatch");
     }
 
+    function testDominantDepositRevertHasCorrectReason() public {
+        ICalculatorAtBlock c = ICalculatorAtBlock(PUBLISHED_CALCULATOR);
+        MockTCO2 token = new MockTCO2(777);
+        MockPool p = new MockPool(address(token));
+        p.setInventory(100e18, 101e18);
+        int256 ratio = c.depositFeeRatioScale();
+        // Only enforce this expectation for a deployed ratio that actually excludes
+        // a 110/111 post-deposit project share, as observed for a ratio of 1.25.
+        if (ratio >= 11e17) {
+            try c.calculateDepositFees(address(p), address(token), 10e18)
+                returns (FeeDistribution memory) {
+                revert("expected outside-range revert");
+            } catch Error(string memory reason) {
+                require(
+                    keccak256(bytes(reason)) == keccak256(bytes("Deposit outside range")),
+                    "reverted for wrong reason"
+                );
+            } catch (bytes memory) {
+                revert("unexpected custom/panic revert");
+            }
+        }
+    }
+
     function testNearDominantDepositDomainAndBoundaryGrid() public {
         ICalculatorAtBlock c = ICalculatorAtBlock(PUBLISHED_CALCULATOR);
-        MockPool p = new MockPool(TOKEN);
+        require(c.depositFeeRatioScale() == 125e16, "checkpoint ratio changed");
+        MockTCO2 token = new MockTCO2(777);
+        MockPool p = new MockPool(address(token));
         uint256[8] memory others = [
             uint256(1e18), uint256(1e17), uint256(1e16), uint256(1e12),
             uint256(1e9), uint256(1e6), uint256(1), uint256(0)
         ];
         for (uint256 i = 0; i < others.length; ++i) {
             p.setInventory(100e18, 100e18 + others[i]);
-            try c.calculateDepositFees(address(p), TOKEN, 10e18)
+            try c.calculateDepositFees(address(p), address(token), 10e18)
                 returns (FeeDistribution memory d) {
+                require(others[i] == 0, "dominant dynamic deposit unexpectedly accepted");
+                require(_total(d) == 1e18, "single-project deposit fee mismatch");
                 emit EVMFeeProbe(others[i], true, false, _total(d));
-            } catch {
+            } catch Error(string memory reason) {
+                require(others[i] > 0, "single-project deposit reverted");
+                require(keccak256(bytes(reason)) == keccak256(bytes("Deposit outside range")), "grid wrong revert reason");
                 emit EVMFeeProbe(others[i], true, true, 0);
+            } catch (bytes memory) {
+                revert("grid unexpected custom/panic revert");
             }
-            try this.redemptionProbe(address(p), 10e18) returns (uint256 fee) {
+            try this.redemptionProbe(address(p), address(token), 10e18) returns (uint256 fee) {
                 emit EVMFeeProbe(others[i], false, false, fee);
             } catch {
                 emit EVMFeeProbe(others[i], false, true, 0);

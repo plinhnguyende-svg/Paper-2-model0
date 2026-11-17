@@ -1,0 +1,112 @@
+\documentclass[11pt]{article}
+\usepackage[a4paper,margin=1in]{geometry}
+\usepackage{amsmath,amssymb,amsthm,booktabs,array,hyperref}
+\newtheorem{proposition}{Proposition}
+\newtheorem{assumption}{Assumption}
+\newcommand{\pos}[1]{\left[#1\right]_+}
+\title{Gate 12: Smart-Contract Fees and Biochar Supply-Chain Incentives\\\large Formal Economic Microfoundation (Research Appendix)}
+\author{Research development draft --- no observed producer data}
+\date{16 November 2026}
+\begin{document}
+\maketitle
+\section{Status and institutional boundary}
+All analytical statements below are conditional on a stylized contracting model. Source-based Toucan deposit and redemption fee formulas are real-number idealizations. They are not EVM-verified at a historical block, nor do we claim to have observed producer royalties, physical output, or a causal effect on carbon dioxide removal. CORCs arise after verified biochar operations. The legal CORC supplier can be a distinct authorized agent of the biochar producer (Puro Biochar Methodology 2025 v2, Section 2.1). Consequently, on-chain TCO$_2$ token ownership is not identified with the physical producer by assumption.
+
+\section{Exact sequence and definitions}
+Before production, a producer and a potential intermediary agree on an ex-ante contingent procurement rule. The producer chooses physical output $y\geq 0$ using finance $L\geq0$. Eligible production and independent output verification give a stylized $\eta y$ newly verified CORCs. A legal holder may sell outside the CHAR pool or tokenize and deposit credits. Buyers may redeem pooled credits subject to their fee and valuations. Fee recipients need not be producers.
+
+Let $q_j$ be the project-$j$ pool inventory, $Q$ the total, and $x>0$ the marginal transaction size. Let $D_j$ and $R_j$ be total CHAR-denominated fees. Let $d_j=D_j/x$. An exogenous market numeraire $P>0$ is monetary value per CHAR, $v>0$ an intermediary's per-CORC net outside-sale realization, $g_s\geq0$ successful trade execution expense, $g_f\geq0$ failed-call expense, $\pi\in[0,1]$ assumed execution probability. The intermediary's net successful-pool realization per CORC is
+\begin{equation}
+ r_j^{\mathrm{pool}}=P(1-d_j)-\frac{g_s}{x}.
+\end{equation}
+The positive expected incremental benefit over the outside sale is
+\begin{equation}
+ \Delta_j=\pos{\pi\big(r_j^{\mathrm{pool}}-v\big)-(1-\pi)\frac{g_f}{x}}.
+\end{equation}
+An advance-negotiated contract passes fraction $\beta\in[0,1]$ of that incremental benefit upstream, so the producer receives a *contingent contractual payment* per eligible CORC,
+\begin{equation}
+ b_j=b_0+\beta\Delta_j.
+\end{equation}
+This $\beta$ is a \emph{hypothesis about an independent procurement contract}; it is not Toucan's actual `FeeSetup` recipient shares. In uncertain markets, $\Delta_j$ in the ex-ante contract can be replaced by $\mathbb E[\Delta_j\mid \mathcal I_0]$; numerical illustrations use a degenerate known anticipated state. No royalty is included.
+
+Physical producer cost and financing are
+\begin{equation}
+ C(y)=cy+\frac{k}{2}y^2,\qquad c\geq0,\ k>0,\quad C(y)\leq L.
+\end{equation}
+Here $\eta>0$ is net certifiable CORCs per physical biochar unit under an eligibility assumption, \emph{not} total gross carbon claimed. Income from co-products is netted into $c$. The most physical output finance permits is
+\begin{equation}
+ \overline y(L)=\frac{\sqrt{c^2+2kL}-c}{k}.
+\end{equation}
+\section{Results}
+\begin{proposition}[Unique constrained physical supply]
+The producer has a unique global solution to
+\begin{equation}
+ \max_{0\leq y\leq\overline y(L)}\;\eta\big(b_0+\beta\Delta_j\big)y-cy-\frac{k}{2}y^2.
+\end{equation}
+It is
+\begin{equation}
+ \boxed{y_j^*=\min\left\{\overline y(L),\max\left\{0,\frac{\eta(b_0+\beta\Delta_j)-c}{k}\right\}\right\}.}
+\end{equation}
+\end{proposition}
+\begin{proof}
+The first derivative of the objective with respect to $y$ is $\eta(b_0+\beta\Delta_j)-c-ky$, and its second derivative is $-k<0$. Strict concavity on the compact interval $[0,\overline y(L)]$ establishes a unique constrained maximum. The only unconstrained stationary point solves $y=[\eta(b_0+\beta\Delta_j)-c]/k$. When this point lies below zero, the derivative is negative at zero, so the unique maximum is zero. When it lies above the liquidity bound, the derivative is positive at the bound, so the maximum is $\overline y(L)$. Otherwise the stationary point is the unique optimum. The formula follows by clipping. The liquidity bound is the nonnegative solution of $cy+ky^2/2=L$.
+\end{proof}
+\begin{proposition}[No automatic transmission without an upstream contract]
+With $\beta=0$, no producer-identified royalties and fixed $b_0,\eta,c,k,L$, no change in the CHAR fee policy or its execution probability changes the optimal physical producer output, though other market participants' payoffs can change.
+\end{proposition}
+\begin{proof}
+Setting $\beta=0$ removes $\Delta_j$ from the unique optimal-output expression, leaving a function of $b_0,\eta,c,k,L$ alone. Pool fees and execution constraints enter only through $\Delta_j$. Hence they cannot change $y_j^*$ under the stated conditions.
+\end{proof}
+\begin{proposition}[Conditional marginal transmission]
+If $\Delta_j>0$, $\beta>0$ and $0<y_j^*<\overline y(L)$, then holding $P,g_s,g_f,x,v,\pi$ fixed,
+\begin{equation}
+ \boxed{\frac{\partial y_j^*}{\partial d_j}=-\frac{\eta\beta\pi P}{k}.}
+\end{equation}
+For $\pi=1$ the right-hand side simplifies to $-\eta\beta P/k$. The derivative need not exist when a maximum operator switches branches.
+\end{proposition}
+\begin{proof}
+The strictly positive expected increment equals $\Delta_j=\pi[P(1-d_j)-g_s/x-v]-(1-\pi)g_f/x$. Differentiating yields $\partial\Delta_j/\partial d_j=-\pi P$. At a strictly interior output, $y_j^*=[\eta(b_0+\beta\Delta_j)-c]/k$. By the chain rule, $\partial y_j^*/\partial d_j=(\eta\beta/k)(-\pi P)$, as claimed.
+\end{proof}
+\begin{proposition}[Binding pre-processing finance blocks the output response]
+If the physical liquidity cap is below the unconstrained optimum under both policies compared, then a change in post-certification pool fees or fees' effects on intermediary revenues does not alter $y_j^*$.
+\end{proposition}
+\begin{proof}
+Under both policies the constrained optimum is $\overline y(L)$ by Proposition 1, and this cap does not depend on pool fees. Thus the change in actual output is zero. Because CORCs are issued after eligible physical processing, an additional advance financing instrument must be specified before post-certification liquidity can be assumed to relax $L$.
+\end{proof}
+\begin{proposition}[Conditional upstream propagation of a single-project source boundary]
+Fix $q_j=q>0$, $x>0$ and a small other-project balance $\varepsilon>0$. The published real-number FeeCalculator gives $D_j(q,q,x)=0.1x$ and
+\begin{equation}
+ \lim_{\varepsilon\downarrow0}D_j(q,q+\varepsilon,x)=0.36x.
+\end{equation}
+If $P(0.9)-g_s/x>v$ while $P(0.64)-g_s/x\leq v$, and if $\pi=1$, $\beta>0$, positive unconstrained output and nonbinding pre-processing finance apply, then $y_j^*$ is strictly higher at the exactly single-project state than at the right-hand interior limit.
+\end{proposition}
+\begin{proof}
+For the interior fee, both dominance ratios approach one as $\varepsilon\downarrow0$; thus both logarithms approach $\log_{10}(1-0.99)=-2$. The deposit fee approaches $.18[-2q+2(q+x)]=.36x$. The source special branch is $.1x$. The first economic inequality means the exact monopoly state generates a strictly positive incremental pooling premium $P(0.9)-g_s/x-v$. The second makes the interior-limit premium zero. The upstream purchase payment difference is strictly positive and equal to $\beta[P(0.9)-g_s/x-v]$. Proposition 1 then maps this into strictly higher physical output under the stated interior and liquidity conditions.
+\end{proof}
+\begin{proposition}[Redemption-demand response]
+Let a downstream buyer have value per project-specific CORC $u$ and redemption execution cost $g_R$. The buyer redeems $x$ CORCs only if
+\begin{equation}
+ u\geq P\left(1+\frac{R_j(q_j,Q,x)}{x}\right)+\frac{g_R}{x}.
+\end{equation}
+If $u$ has CDF $F_u$, conditional redemption demand is
+\begin{equation}
+ 1-F_u\left(P\left(1+\frac{R_j}{x}\right)+\frac{g_R}{x}\right),
+\end{equation}
+which is weakly decreasing in $R_j$, strictly when the valuation density at the threshold is positive.
+\end{proposition}
+\begin{proof}
+The buyer's expected utility from successful redemption of the requested $x$ units is $ux-P(x+R_j)-g_R$. Compare with the outside utility zero and solve for $u$. The share of buyers above that threshold is one minus its CDF. Differentiation with respect to the fee gives $-(P/x)f_u(\cdot)\leq0$ whenever the density exists.
+\end{proof}
+
+\section{Illustrative parameterization and limits}
+For numerical verification only, the Python experiment sets $P=200$, $v=155$, $b_0=140$, $\beta=0.5$, $\eta=0.8$, $c=70$, $k=1.1$, $g_s=3$, $g_f=2$, $x=10$, and $\pi=1$. Under unbounded working capital, published source fees produce an output of about $47.164$ at exact one-project balance $q=Q=100$, compared with about $38.182$ at $q=100$, $Q=100.01$. When $\beta=0$ or liquidity binds at both states, there is no upstream difference. These are synthetic results, not actual CHAR source prices, production, royalties, or CDR outcomes. Source contract versions, EVM rounding and historical state remain unverified.
+
+\section{Research validity checklist}
+\begin{enumerate}
+\item Verify EIP-1967 proxy implementation, active fee calculator, historical parameters and ABI at the same chain block; public code mirrors are not guaranteed identical to implementation at that block.
+\item Run Foundry source tests and historical fork checks before any claim about deployed EVM fixed-point behavior. This research environment lacks `forge`.
+\item Identify whether the intermediary's procurement agreement actually passes liquidity gains upstream; otherwise set $\beta=0$ and do not infer physical producer output from token fees.
+\item Distinguish Puro legal CORC supplier, actual physical biochar producer, on-chain TCO$_2$ holder and anonymous fee recipient.
+\item Distinguish post-issuance token liquidity from pre-production working capital, and CORC retirements from additional net atmospheric removal.
+\end{enumerate}
+\end{document}

@@ -1,0 +1,22 @@
+{
+  "gate13/synthetic_beta_bounds.csv": "synthetic_beta_bounds.csv",
+  "gate10/boundary_fee_grid_SYNTHETIC.csv": "boundary_fee_grid.csv",
+  "gate10/policy_summary_SYNTHETIC.csv": "policy_summary_SYNTHETIC.csv",
+  "gate9/policy_simulation_summary_SYNTHETIC.csv": "policy_simulation_summary.csv",
+  "gate9/joint_mechanism_summary_SYNTHETIC.csv": "joint_mechanism_summary.csv",
+  "gate9/sensitivity_summary_SYNTHETIC.csv": "sensitivity_summary.csv",
+  "gate9/hypothetical_recapture_participation_SYNTHETIC.csv": "hypothetical_recapture_participation.csv",
+  "gate9/hypothetical_fee_split_examples_SYNTHETIC.csv": "hypothetical_fee_split_examples.csv",
+  "gate9/snapshot_one_trade_SYNTHETIC.csv": "snapshot_one_trade.csv",
+  "gate9/boundary_experiment_SYNTHETIC.csv": "boundary_experiment.csv",
+  "gate9/maxfee_execution_stress_summary_SYNTHETIC.csv": "maxfee_execution_stress_summary.csv",
+  "gate11/holdout_policy_tradeoffs_SYNTHETIC.csv": "holdout_policy_tradeoffs_SYNTHETIC.csv",
+  "gate11/paired_holdout_differences_CI_SYNTHETIC.csv": "paired_holdout_differences_CI_SYNTHETIC.csv",
+  "gate11/selected_holdout_SYNTHETIC.csv": "selected_holdout_SYNTHETIC.csv",
+  "gate11/epsilon_constrained_policy_grid_SYNTHETIC.csv": "epsilon_constrained_policy_grid.csv",
+  "gate11/monotonicity_grid_check_SYNTHETIC.csv": "monotonicity_grid_check_SYNTHETIC.csv",
+  "gate11/hypothetical_fee_recipient_splits_SYNTHETIC.csv": "hypothetical_fee_recipient_splits_SYNTHETIC.csv",
+  "gate11/selected_policy_means_SYNTHETIC.csv": "selected_policy_means_SYNTHETIC.csv",
+  "gate12/boundary_and_upstream_SYNTHETIC.csv": "boundary_and_upstream_SYNTHETIC.csv",
+  "gate12/scenario_results_SYNTHETIC.csv": "scenario_results_SYNTHETIC.csv"
+}

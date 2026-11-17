@@ -1,0 +1,40 @@
+{
+  "archives": [
+    {
+      "filename": "Track_C1_Gate13_GitHub_EVM_Contractual_Audit.zip",
+      "sha256": "230bcf211f5caacff4c7a337d1000dec327040be43847a57aa9bcba9a3ddd28c"
+    },
+    {
+      "filename": "Track_C1_Gate10_Smart_Contract_Verification_and_Robustness.zip",
+      "sha256": "0fec2b8236f0f46b4c255d9884f6c891b883108244a2d9e130b28222dba4ffc6"
+    },
+    {
+      "filename": "Track_C1_Gate11_EVM_Validation_Design_Optimization.zip",
+      "sha256": "df80db02190a8f8eea985d4f8130f94b79a29cc04c84d5fc157ab5cd70a008ae"
+    },
+    {
+      "filename": "Track_C1_Gate12_Deployment_SCM_Microfoundation.zip",
+      "sha256": "32156270e71f603de653e7d61cf1b662bb6d0d9dc9349b2526e4a38fbc46176d"
+    },
+    {
+      "filename": "Track_C1_Gate9_Formal_Smart_Contract_Mechanism.zip",
+      "sha256": "2e4bf144dd8c19cd4f85be186f4189b3c6171ad73ef5325281e0703a74878db8"
+    }
+  ],
+  "environment": {
+    "numpy": "2.3.5",
+    "pandas": "2.2.3",
+    "scipy": "1.17.0",
+    "matplotlib": "3.10.8"
+  },
+  "replayed_commands": [
+    "gate9: python3 -m unittest test_gate9 -v; python3 gate9_model.py",
+    "gate10: python3 gate10_mechanism.py",
+    "gate11: python3 gate11_design.py --reps 40 --rounds 150; python3 post_analysis.py",
+    "gate12: python3 gate12_microfoundation.py",
+    "gate13: python3 partial_identification.py"
+  ],
+  "regenerated_csv_matches": 27,
+  "tolerance": "numeric rtol=atol=1e-10; text exact; schemas and rows equal",
+  "scope": "numeric replay does not establish EVM equivalence or empirical truth"
+}

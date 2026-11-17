@@ -1,0 +1,52 @@
+name: CHAR Gate 25 exact historical fee replay
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [research/char-refi-standalone]
+    paths:
+      - '.github/workflows/char-gate25-fee-replay.yml'
+      - 'test/HistoricalCHARExactFeeFork.t.sol'
+      - 'docs/GATE25_EXACT_FEE_REPLAY.md'
+permissions:
+  contents: read
+jobs:
+  replay:
+    name: Transaction-index-aware fee replay (real Base EVM)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: stable
+      - name: Verify explicitly configured RPC without revealing credentials
+        env:
+          BASE_RPC_URL: ${{ secrets.BASE_RPC_URL }}
+        run: python3 scripts/check_base_rpc_access.py gate25/rpc_preflight
+      - name: Pin upstream Solidity dependencies and preserve commits
+        run: |
+          set -euo pipefail
+          mkdir -p lib
+          git clone -q https://github.com/ToucanProtocol/dynamic-fee-pools.git lib/dynamic-fee-pools
+          git -C lib/dynamic-fee-pools checkout -q --detach 7aef954dae1bd0c7add4ed66d216251110521b16
+          git clone -q --depth 1 --branch v4.9.6 https://github.com/OpenZeppelin/openzeppelin-contracts.git lib/openzeppelin-contracts
+          git clone -q --depth 1 --branch v4.0.3 https://github.com/PaulRBerg/prb-math.git lib/prb-math
+          echo "Foundry: $(forge --version)" > gate25/DEPENDENCIES.txt
+          for d in lib/dynamic-fee-pools lib/openzeppelin-contracts lib/prb-math; do
+            echo "$d $(git -C "$d" rev-parse HEAD)" >> gate25/DEPENDENCIES.txt
+          done
+      - name: Replay target transactions at exact pre-transaction EVM states
+        env:
+          BASE_RPC_URL: ${{ secrets.BASE_RPC_URL }}
+        run: |
+          set -euo pipefail
+          forge test --via-ir --match-path test/HistoricalCHARExactFeeFork.t.sol -vvvv 2>&1 | tee gate25/EXACT_FEE_REPLAY.log
+      - name: Archive full verification output even when replay fails
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: char-gate25-exact-fee-replay
+          path: gate25/**
+          if-no-files-found: warn

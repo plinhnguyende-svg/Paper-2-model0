@@ -1,0 +1,140 @@
+name: CHAR Gate 26 source-to-deployment equivalence
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [research/char-refi-standalone]
+    paths:
+      - '.github/workflows/char-gate26-source-deployment.yml'
+      - 'scripts/gate26_source_runtime_audit.py'
+      - 'tests/test_gate26_source_runtime.py'
+      - 'docs/GATE26_SOURCE_DEPLOYMENT_AUDIT.md'
+permissions:
+  contents: read
+jobs:
+  source-deployment:
+    name: Pinned-source compiler/runtime equivalence audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: stable
+      - name: Unit-test bytecode equality and metadata separation (synthetic)
+        run: python3 -m unittest discover -s tests -p 'test_gate26_source_runtime.py' -v
+      - name: Preflight historical Base RPC access
+        env:
+          BASE_RPC_URL: ${{ secrets.BASE_RPC_URL }}
+        run: python3 scripts/check_base_rpc_access.py gate26/rpc_preflight
+      - name: Clone pinned upstream source with exact gitlinked dependencies
+        run: |
+          set -euo pipefail
+          mkdir -p gate26/compiled gate26/build_logs
+          git clone -q https://github.com/ToucanProtocol/dynamic-fee-pools.git gate26/upstream
+          git -C gate26/upstream checkout -q --detach 7aef954dae1bd0c7add4ed66d216251110521b16
+          git -C gate26/upstream submodule update -q --init --recursive
+          {
+            echo "upstream $(git -C gate26/upstream rev-parse HEAD)"
+            echo "forge $(forge --version)"
+            echo "solc_request 0.8.19"
+            git -C gate26/upstream submodule status
+          } > gate26/DEPENDENCY_MANIFEST.txt
+          test "$(git -C gate26/upstream rev-parse HEAD)" = "7aef954dae1bd0c7add4ed66d216251110521b16"
+          test "$(git -C gate26/upstream/lib/openzeppelin-contracts rev-parse HEAD)" = "d4fb3a89f9d0a39c7ee6f2601d33ffbf30085322"
+          test "$(git -C gate26/upstream/lib/prb-math rev-parse HEAD)" = "77fa88eda4a4a91b3f3e9431df291292c26b6c71"
+          test "$(git -C gate26/upstream/lib/forge-std rev-parse HEAD)" = "f73c73d2018eb6a111f35e4dae7b4f27401e9421"
+      - name: Compile bounded compiler-setting candidates from pinned source
+        run: |
+          set -u
+          # Only the declared settings are attempted. No inferred continuous search.
+          # Main upstream package.json build command uses --via-ir.
+          ROOT="$PWD"
+          cd gate26/upstream || exit 1
+          for choice in viair_opt200 viair_opt1000 legacy_opt200 viair_opt10000; do
+            case "$choice" in
+              viair_opt200) args=(--via-ir --optimize --optimizer-runs 200) ;;
+              viair_opt1000) args=(--via-ir --optimize --optimizer-runs 1000) ;;
+              legacy_opt200) args=(--optimize --optimizer-runs 200) ;;
+              viair_opt10000) args=(--via-ir --optimize --optimizer-runs 10000) ;;
+            esac
+            echo "SOURCE_BUILD_ATTEMPT:$choice" | tee -a "$ROOT/gate26/BUILD_STATUS.txt"
+            if forge build src/FeeCalculator.sol --use 0.8.19 --force "${args[@]}" > "$ROOT/gate26/build_logs/$choice.log" 2>&1; then
+              if test -s out/FeeCalculator.sol/FeeCalculator.json; then
+                cp out/FeeCalculator.sol/FeeCalculator.json "$ROOT/gate26/compiled/$choice.json"
+                echo "$choice BUILD_PASS" | tee -a "$ROOT/gate26/BUILD_STATUS.txt"
+              else
+                echo "$choice MISSING_ARTIFACT" | tee -a "$ROOT/gate26/BUILD_STATUS.txt"
+              fi
+            else
+              echo "$choice BUILD_FAILED" | tee -a "$ROOT/gate26/BUILD_STATUS.txt"
+              tail -25 "$ROOT/gate26/build_logs/$choice.log" | sed -E 's#https?://[^ ]+#[REDACTED]#g'
+            fi
+          done
+          cd "$ROOT" || exit 1
+          test "$(find gate26/compiled -name '*.json' | wc -l)" -ge 1
+      - name: Test limited historically plausible source revisions separately
+        run: |
+          set -u
+          ROOT="$PWD"
+          cd gate26/upstream || exit 1
+          # These are alternative source hypotheses, not the pinned-source proof.
+          # The Feb 2024 revisions fetch projectTokenId from getVintageData(),
+          # matching the historical Gate 25 project-ID call semantics.
+          for sha in \
+            1faac76f50db861331905391cb95b55d278391d9 \
+            eb2b6278d322f97f387869db56093f30e44b15c8 \
+            2ea68bd9b9da3c77debc135a6df76cc42fe89c60 \
+            7737f27062d5eaea5ada56efc22ee9264be62d95; do
+            short="${sha:0:8}"
+            if ! git checkout -q --detach "$sha"; then
+              echo "$sha CHECKOUT_FAILED" >> "$ROOT/gate26/HISTORY_BUILD_STATUS.txt"
+              continue
+            fi
+            if ! git submodule update -q --init --recursive; then
+              echo "$sha SUBMODULE_CHECKOUT_FAILED" >> "$ROOT/gate26/HISTORY_BUILD_STATUS.txt"
+              continue
+            fi
+            {
+              echo "source $sha"
+              git submodule status
+            } >> "$ROOT/gate26/HISTORY_DEPENDENCIES.txt"
+            for mode in legacy viair; do
+              label="hist_${short}_${mode}_opt200"
+              if [[ "$mode" = "viair" ]]; then opt=(--via-ir --optimize --optimizer-runs 200); else opt=(--optimize --optimizer-runs 200); fi
+              if forge build src/FeeCalculator.sol --use 0.8.19 --force "${opt[@]}" > "$ROOT/gate26/build_logs/$label.log" 2>&1 \
+                  && test -s out/FeeCalculator.sol/FeeCalculator.json; then
+                cp out/FeeCalculator.sol/FeeCalculator.json "$ROOT/gate26/compiled/$label.json"
+                echo "$sha $mode BUILD_PASS" | tee -a "$ROOT/gate26/HISTORY_BUILD_STATUS.txt"
+              else
+                echo "$sha $mode BUILD_FAILED" | tee -a "$ROOT/gate26/HISTORY_BUILD_STATUS.txt"
+              fi
+            done
+          done
+          cd "$ROOT" || exit 1
+      - name: Audit deployed snapshots, codehash anchors and candidate runtime
+        env:
+          BASE_RPC_URL: ${{ secrets.BASE_RPC_URL }}
+        run: |
+          set -euo pipefail
+          python3 scripts/gate26_source_runtime_audit.py \
+            --artifact-dir gate26/compiled \
+            --blocks 13826400 13826401 15709580 15709581 58258072 \
+            --out gate26/runtime_audit | tee gate26/AUDIT_CONCLUSION.log
+      - name: Archive complete source/runtime provenance, including unresolved mismatches
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: char-gate26-source-deployment-evidence
+          path: |
+            gate26/DEPENDENCY_MANIFEST.txt
+            gate26/BUILD_STATUS.txt
+            gate26/HISTORY_BUILD_STATUS.txt
+            gate26/HISTORY_DEPENDENCIES.txt
+            gate26/AUDIT_CONCLUSION.log
+            gate26/build_logs/**
+            gate26/compiled/**
+            gate26/rpc_preflight/**
+            gate26/runtime_audit/**
+          if-no-files-found: warn

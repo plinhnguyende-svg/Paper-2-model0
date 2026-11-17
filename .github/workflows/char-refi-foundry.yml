@@ -58,6 +58,7 @@ jobs:
             echo "FORK_EVM_PASS at Base block 58258072" > FORK_STATUS.txt
           else
             echo "FORK_EVM_NOT_VERIFIED_OR_FAILED: check FORK_RESULTS.log" > FORK_STATUS.txt
+            exit 1
           fi
           cat FORK_STATUS.txt
 
@@ -101,3 +102,124 @@ jobs:
             history/**
             historical_base_evidence/**
           if-no-files-found: warn
+
+  economic-revalidation:
+    name: Gate 18 economic revalidation (offline, conditional model)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Revalidate economics and accounting
+        run: python3 -m unittest discover -s tests -p 'test_gate18.py' -v
+      - name: Enumerate declared finite policy problem
+        run: python3 scripts/gate18_model.py --out results/gate18
+      - name: Archive synthetic results and model scope
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gate18-economic-revalidation
+          path: |
+            results/gate18/**
+            docs/GATE18*
+            config/benchmarks.json
+            config/gate18_input_provenance.json
+          if-no-files-found: error
+
+  original-economic-replay:
+    name: Gates 9-13 original numerical replay (synthetic)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install recorded numerical dependencies
+        run: python -m pip install numpy==2.3.5 pandas==2.2.3 scipy==1.17.0 matplotlib==3.10.8
+      - name: Replay recovered originals and compare small reference summaries
+        run: python scripts/replay_original_economics.py --out results/gate18/replay_ci
+      - name: Archive original replay logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gate18-original-economic-replay
+          path: results/gate18/replay_ci/**
+          if-no-files-found: error
+
+  endogenous-production:
+    name: Gate 19 endogenous production and channel choice (real model)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Check global-branch solver and economic counterexamples
+        run: python3 -m unittest discover -s tests -p 'test_gate19.py' -v
+      - name: Sweep declared endogenous quantity scenarios
+        run: python3 scripts/gate19_endogenous.py --out results/gate19
+      - name: Archive conditional model and synthetic results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gate19-endogenous-production
+          path: |
+            docs/GATE19*
+            scripts/gate19_endogenous.py
+            tests/test_gate19.py
+            results/gate19/**
+          if-no-files-found: error
+
+  partial-pooling:
+    name: Gate 20 partial pooling and self-batching robustness
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Check partial venue allocation and fee-potential identity
+        run: python3 -m unittest discover -s tests -p 'test_gate20.py' -v
+      - name: Compare partial and all-output scenarios
+        run: python3 scripts/gate20_partial_pooling.py --out results/gate20
+      - name: Archive model qualifications and synthetic comparison
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gate20-partial-pooling
+          path: |
+            docs/GATE20*
+            scripts/gate20_partial_pooling.py
+            tests/test_gate20.py
+            results/gate20/**
+          if-no-files-found: error
+
+  designer-menu:
+    name: Gate 21 deposit-scale designer and topic-scope checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify design ordering and feasibility accounting
+        run: python3 -m unittest discover -s tests -p 'test_gate21.py' -v
+      - name: Enumerate approved scale menu with endogenous routing
+        run: python3 scripts/gate21_designer.py --out results/gate21
+      - name: Archive model scope and synthetic design certificates
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gate21-designer-menu
+          path: |
+            docs/GATE21*
+            config/research_scope.json
+            scripts/gate21_designer.py
+            tests/test_gate21.py
+            results/gate21/**
+          if-no-files-found: error
+

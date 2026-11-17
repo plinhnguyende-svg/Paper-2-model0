@@ -1,0 +1,105 @@
+name: CHAR Gate 29 full event-level empirical feasibility audit
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [research/char-refi-standalone]
+    paths:
+      - '.github/workflows/char-gate29-empirical.yml'
+      - 'scripts/gate29_event_census.py'
+      - 'scripts/gate29_indexed_transfers.py'
+      - 'scripts/gate29_prestate_enrich.py'
+      - 'scripts/gate29_feasibility.py'
+      - 'tests/test_gate29_empirical_pipeline.py'
+      - 'docs/GATE29_EMPIRICAL_AUDIT.md'
+
+permissions:
+  contents: read
+concurrency:
+  group: gate29-empirical-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  empirical-census:
+    name: Read-only historical pool logs, canonical receipts and identification audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: stable
+      - name: Strict local tests (no RPC secret)
+        run: |
+          set -euo pipefail
+          mkdir -p results/gate29/census
+          python3 -m unittest discover -s tests -p 'test_gate29_empirical_pipeline.py' -v 2>&1 | tee results/gate29/census/UNIT_TESTS.log
+      - name: Recover last successful scan checkpoint, if one exists
+        uses: actions/cache@v4
+        with:
+          path: |
+            results/gate29/census/POOL_SCAN_JOURNAL.jsonl
+            results/gate29/census/POOL_LOGS.jsonl
+            results/gate29/census/CALCULATOR
+            results/gate29/census/RECEIPT_ROWS.jsonl
+            results/gate29/census/RECEIPTS
+            results/gate29/census/INDEXER_RECEIPT_ROWS.jsonl
+            results/gate29/census/INDEXER_VERIFIED_POOL_EVENTS.jsonl
+            results/gate29/census/INDEXER_RAW_RECEIPTS
+            results/gate29/census/mints_from_zero
+            results/gate29/census/burns_to_zero
+          key: gate29-history-base8453-${{ github.run_id }}
+          restore-keys: |
+            gate29-history-base8453-
+      - name: Try full-history indexed CHAR mint/burn transfer pagination
+        env:
+          BASE_RPC_URL: ${{ secrets.BASE_RPC_URL }}
+        run: |
+          set -euo pipefail
+          python3 scripts/gate29_indexed_transfers.py \
+            --out results/gate29/census \
+            --max-pages 32 \
+            --max-receipts 400 \
+            --max-seconds 180 \
+            2>&1 | tee results/gate29/census/INDEXER_RUN.log
+      - name: Discover chronological pool and calculator events from historical Base RPC
+        env:
+          BASE_RPC_URL: ${{ secrets.BASE_RPC_URL }}
+        run: |
+          set -euo pipefail
+          python3 scripts/gate29_event_census.py \
+            --out results/gate29/census \
+            --start-block 0 \
+            --chunk 200000 \
+            --max-seconds 45 \
+            --max-log-calls 45 \
+            --max-calc-seconds 15 \
+            --max-calc-log-calls 25 \
+            --max-receipts 30 \
+            2>&1 | tee results/gate29/census/SCAN_RUN.log
+      - name: Enrich first historical event blocks without equating B-1 with transaction-index state
+        env:
+          BASE_RPC_URL: ${{ secrets.BASE_RPC_URL }}
+        run: |
+          set -euo pipefail
+          python3 scripts/gate29_prestate_enrich.py \
+            --out results/gate29/census \
+            --max-blocks 75 \
+            --max-seconds 180 \
+            2>&1 | tee results/gate29/census/PRESTATE_RUN.log
+      - name: Empirical variation and identification feasibility decision
+        run: |
+          set -euo pipefail
+          python3 scripts/gate29_feasibility.py \
+            --out results/gate29/census \
+            2>&1 | tee results/gate29/census/EMPIRICAL_AUDIT_RUN.log
+      - name: Archive raw evidence, explicit coverage gaps, empirical panel and feasibility audit
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: char-gate29-onchain-event-panel-and-audit
+          path: results/gate29/census/**
+          if-no-files-found: warn
+          retention-days: 30

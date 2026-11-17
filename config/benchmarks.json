@@ -1,0 +1,39 @@
+{
+  "schema": "gate18-v1",
+  "source_default": {
+    "repository": "ToucanProtocol/dynamic-fee-pools",
+    "commit": "7aef954dae1bd0c7add4ed66d216251110521b16",
+    "deposit_scale": "0.18",
+    "deposit_ratio": "0.99",
+    "redemption_scale": "0.30",
+    "redemption_shift": "0.10",
+    "single_deposit": "0.10",
+    "single_redemption": "0.10",
+    "dust_redemption": "0.30",
+    "status": "pinned source defaults; analytical Decimal evaluation is not EVM execution"
+  },
+  "historical_checkpoint": {
+    "chain_id": 8453,
+    "block": 58258072,
+    "pool": "0x20b048fA035D5763685D695e66aDF62c5D9F5055",
+    "calculator": "0x6A4549759C475d845d4AE074B3656dC257490DA5",
+    "deposit_scale": "0.15",
+    "deposit_ratio": "1.25",
+    "evidence_run": 44000844914,
+    "evidence_scope": "checkpoint reads and deployed-calculator mock-pool fork; not continuous history or full pool execution",
+    "formula_bytecode_equivalence": "NOT_ESTABLISHED",
+    "analytical_use": "source formula with observed deposit parameters is a counterfactual, not an exact deployed oracle"
+  },
+  "pool_source_accounting": {
+    "repository": "ToucanProtocol/contracts",
+    "commit": "9afe1809bd4840cad82fc49d26d8286a7c6728e1",
+    "files": ["contracts/pools/Pool.sol", "contracts/pools/PoolERC20able.sol", "contracts/pools/PoolWithFeeCalculatorERC20.sol"],
+    "status": "published source accounting; historical implementation matching remains open"
+  },
+  "recipient_checkpoint": {
+    "recipients": ["0x7d3E7BbD4e9e4e1507FF4a4b488934abfbAcb801", "0xcA07B1B8A2D6767178F7f7038A3c54aC949d9440"],
+    "shares_percent": [75, 25],
+    "producer_attribution": "UNVERIFIED",
+    "beta": null
+  }
+}

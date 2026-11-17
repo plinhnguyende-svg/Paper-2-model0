@@ -1,0 +1,168 @@
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb,amsthm,booktabs,longtable,hyperref}
+\newtheorem{proposition}{Proposition}
+\newtheorem{corollary}{Corollary}
+\title{Gate 11: Formal Economic Design of State-Dependent Smart-Contract Fees}
+\author{Research appendix --- reproducible synthetic mechanism analysis}
+\date{16 November 2026}
+\begin{document}
+\maketitle
+\noindent\textbf{Scope.} This appendix concerns exact real-number representations of the public Toucan FeeCalculator formulas. It does not verify Solidity fixed-point arithmetic, historical mainnet deployments, real participant choices, cash proceeds to biochar producers, or additional physical carbon removal.
+
+\section{Source-formula primitives}
+Let the current inventory of the selected project be $q$, total pool inventory $Q$, and the proposed amount of credits $x$. Let $Q>0$, $0\le q\le Q$, $x>0$, and (for redemption) $q\ge x$, $Q>x$. Define the deposit formula on the interior branch $q<Q$:
+\begin{align}
+D(q,Q,x)=0.18\bigg[q\log_{10}\!\left(1-0.99\frac{q}{Q}\right)
+-(q+x)\log_{10}\!\left(1-0.99\frac{q+x}{Q+x}\right)\bigg].\label{eq:deposit}
+\end{align}
+The redemption formula on the interior branch $q<Q$ is
+\begin{align}
+R(q,Q,x)=0.30\bigg[&(q-x)\log_{10}\!\left(\frac{q-x}{Q-x}+0.1\right)
+-q\log_{10}\!\left(\frac{q}{Q}+0.1\right)\notag\\
+&+x\log_{10}(1.1)\bigg].\label{eq:redeem}
+\end{align}
+The public source's $q=Q$ branch sets both fees to $0.10x$. A separate convention applies at $Q=0$. The actual implementation also uses fixed-point rounding, a nonzero fee requirement, a negative-fee fallback and mutable parameters; they are outside these real-number propositions.
+
+\section{Interior monotonicity}
+\begin{proposition}[Increasing deposit fees on the interior]
+For each fixed $Q>0$ and $x>0$, the fee in \eqref{eq:deposit} is strictly increasing with $q\in[0,Q)$.
+\end{proposition}
+\begin{proof}
+Define $a=q/Q$ and $b=(q+x)/(Q+x)$. Since $x>0$ and $q<Q$,
+\begin{equation}
+b-a=\frac{(q+x)Q-q(Q+x)}{Q(Q+x)}=\frac{x(Q-q)}{Q(Q+x)}>0.
+\end{equation}
+Differentiating \eqref{eq:deposit} with respect to $q$, while keeping $Q$ and $x$ fixed, gives
+\begin{align}
+\frac{\partial D}{\partial q}=\frac{0.18}{\ln(10)}\bigg[
+&\ln(1-0.99a)-\frac{0.99a}{1-0.99a}\\
+&-\ln(1-0.99b)+\frac{0.99b}{1-0.99b}\bigg].\notag
+\end{align}
+Let $\phi(z)=\ln(1-0.99z)-0.99z/(1-0.99z)$. Then
+\begin{equation}
+\phi'(z)=-\frac{0.99}{1-0.99z}-\frac{0.99}{(1-0.99z)^2}<0
+\end{equation}
+for $z\in[0,1]$. Since $a<b$, $\phi(a)>\phi(b)$, so $\partial D/\partial q>0$.
+\end{proof}
+
+\begin{proposition}[Decreasing redemption fees on the interior]
+For fixed $Q>x>0$, \eqref{eq:redeem} is strictly decreasing with $q\in[x,Q)$.
+\end{proposition}
+\begin{proof}
+Set $a=q/Q$ and $b=(q-x)/(Q-x)$. We have
+\begin{equation}
+b-a=\frac{Q(q-x)-q(Q-x)}{Q(Q-x)}=-\frac{x(Q-q)}{Q(Q-x)}<0.
+\end{equation}
+Direct differentiation yields
+\begin{align}
+\frac{\partial R}{\partial q}=\frac{0.30}{\ln(10)}\bigg[
+&\ln(b+0.1)+\frac{b}{b+0.1}\\
+&-\ln(a+0.1)-\frac{a}{a+0.1}\bigg].\notag
+\end{align}
+Defining $\psi(z)=\ln(z+0.1)+z/(z+0.1)$ gives
+\begin{equation}
+\psi'(z)=\frac{1}{z+0.1}+\frac{0.1}{(z+0.1)^2}>0.
+\end{equation}
+Since $b<a$, $\psi(b)<\psi(a)$, hence $\partial R/\partial q<0$.
+\end{proof}
+
+\section{Boundary-continuity versus incentive monotonicity}
+\begin{proposition}[Boundary limits]
+For any $Q>x>0$,
+\begin{equation}
+\lim_{q\uparrow Q}D(q,Q,x)=0.36x,
+\qquad \lim_{q\uparrow Q}R(q,Q,x)=0.
+\end{equation}
+\end{proposition}
+\begin{proof}
+As $q\uparrow Q$, both deposit log arguments tend to $1-0.99=0.01$, giving
+$0.18[Q\log_{10}(0.01)-(Q+x)\log_{10}(0.01)]=0.18[(-2Q)+2(Q+x)]=0.36x$.
+For redemption, both inventory-ratio log arguments tend to $1.1$, so the coefficient becomes
+$(Q-x)\log_{10}(1.1)-Q\log_{10}(1.1)+x\log_{10}(1.1)=0$.
+\end{proof}
+
+\begin{proposition}[Failure of anchored local smoothing to preserve monotonicity]
+Fix $Q>x>0$ and $\tau>0$. Define
+\begin{equation}
+\lambda_{\tau}(q,Q)=\frac{Q-q}{Q-q+\tau Q}.
+\end{equation}
+Suppose the fee is $0.10x$ at $q=Q$, and for $q<Q$ the proposed smoothed fee equals
+\begin{equation}
+D_{\tau}^{S}=(1-\lambda_{\tau})0.10x+\lambda_{\tau}D,
+\quad R_{\tau}^{S}=(1-\lambda_{\tau})0.10x+\lambda_{\tau}R.
+\end{equation}
+Then $D_{\tau}^{S}$ is continuous at $q=Q$ but fails to be nondecreasing sufficiently close to $Q$, and $R_{\tau}^{S}$ is continuous there but fails to be nonincreasing.
+\end{proposition}
+\begin{proof}
+When $q\uparrow Q$, $\lambda_{\tau}\to0$ and the source fees have finite one-sided limits; therefore both smoothed fees converge to $0.10x$. Because the one-sided source deposit limit is $0.36x>0.10x$, there exists $q_0<Q$ such that $D(q,Q,x)>0.10x$ for all $q\in(q_0,Q)$. At every such $q$, $\lambda_{\tau}>0$, hence $D_{\tau}^{S}(q,Q,x)>0.10x=D_{\tau}^{S}(Q,Q,x)$. This contradicts nondecreasingness on $[q_0,Q]$. Similarly, the one-sided redemption limit is $0<0.10x$, so for all $q$ close enough to $Q$, $R_{\tau}^{S}(q,Q,x)<0.10x=R_{\tau}^{S}(Q,Q,x)$, contradicting nonincreasingness. No numerical approximation is needed.
+\end{proof}
+
+\begin{proposition}[Clipped-anchor continuous and monotone design]
+Choose a fee fraction $c$ satisfying $0<c\le0.36$. For $q<Q$, define
+\begin{equation}
+D^{C}_c(q,Q,x)=\min\{D(q,Q,x),cx\},\qquad
+R^{C}_c(q,Q,x)=\max\{R(q,Q,x),cx\}.
+\end{equation}
+At $q=Q$, set both fees equal to $cx$. These rules are continuous at $q=Q>0$, with the deposit fee nondecreasing and the redemption fee nonincreasing in $q$ on the admissible intervals.
+\end{proposition}
+\begin{proof}
+The minimum of a nondecreasing function and a constant is nondecreasing; likewise the maximum of a nonincreasing function and a constant is nonincreasing. By the source limits, $\lim_{q\uparrow Q}D^{C}_c=\min\{0.36x,cx\}=cx$, while $\lim_{q\uparrow Q}R^{C}_c=\max\{0,cx\}=cx$. This equals the stipulated boundary fee, completing continuity.
+\end{proof}
+
+\begin{proposition}[Interior-limit extension with redemption floor]
+Choose $\delta>0$. Retain $D(q,Q,x)$ for $q<Q$ and set $D^E(Q,Q,x)=0.36x$. Define
+\begin{equation}
+R^E(q,Q,x)=\max\{R(q,Q,x),\delta x\},\quad q<Q,
+\qquad R^E(Q,Q,x)=\delta x.
+\end{equation}
+For fixed $Q>x>0$, the resulting fees are continuous and monotone at $q=Q$ under the real-number model.
+\end{proposition}
+\begin{proof}
+Deposit monotonicity on the interior follows from the first proposition, and its one-sided limit equals the boundary value. The maximum of decreasing $R$ and a constant is nonincreasing; its limit is $\delta x$ as $q\uparrow Q$, matching the boundary definition.
+\end{proof}
+
+\paragraph{Limits of these propositions.}
+They do not establish EVM implementation correctness, global continuity across the empty-pool corner $Q=0$, actual contract eligibility, positive-fee integer rounding, unchanged fee-parameter governance, or compliance with Toucan production contracts. Source's `feeAmount != 0` requirement can cause valid positive real-number fees to revert when rounded to zero. A wrapper that calls the original calculator can inherit those reverts.
+
+\section{Economic participation and execution}
+For a depositor with outside per-credit value $v$, CHAR price $P$, successful transaction execution cost $g_s$, and deposit amount $x$, define
+\begin{equation}
+\pi^D=P[x-D(q,Q,x)]-vx-g_s.
+\end{equation}
+A buyer with redemption value $u$ has
+\begin{equation}
+\pi^R=ux-P[x+R(q,Q,x)]-g_s.
+\end{equation}
+After submitting a call, if failure costs $g_f$ and the sole uncertainty is the eventual fee, the depositor weakly prefers success to failure when
+\begin{equation}
+D\le x(1-v/P)-(g_s-g_f)/P,
+\end{equation}
+and the buyer weakly prefers it when
+\begin{equation}
+R\le x(u/P-1)-(g_s-g_f)/P.
+\end{equation}
+This is a private conditional choice, not a strategic equilibrium. It assumes exogenous $P$, $u$ and $v$ and omits competition for block ordering.
+
+\section{Financial allocation proposition}
+Let a positive fee $f$ be allocated among $m$ recipients at fractions $\alpha_1,\dots,\alpha_m\ge0$ satisfying $\sum_{r=1}^m\alpha_r=1$. On the deposit path, total created pool tokens are $x$: $x-f$ received by depositor and $f$ distributed to fee recipients. On redemption, fee tokens are transferred to recipients and possibly to a designated burn recipient, according to the active implementation. If none of the recipients is a marginal trader and the token price is exogenous, individual trading incentives depend on $f$ but not the vector $(\alpha_1,\dots,\alpha_m)$. The recipient distribution itself remains a genuine measurable economic consequence of the contract. A receipt of CHAR does not establish fiat proceeds to a project producer.
+
+\section{Finite constrained design optimization}
+Let $\Omega$ contain three scenario-specific starting inventory vectors, one publicly indexed but without an on-chain block reference and two artificial stress states. Let $\mathcal{P}$ denote a finite list of fee policies and $\mathcal{B}$ a finite list of `maxFee` buffers. For policy $p\in\mathcal{P}$, buffer $b\in\mathcal{B}$ and scenario $\omega\in\Omega$, let $V_\omega(p,b)$ be expected successful eligible quantity, $H_\omega(p,b)$ be expected final inventory concentration, $C_\omega(p,b)$ be expected completion probability conditional on submitting, and $F_\omega(p,b)$ be total CHAR fee tokens distributed.
+
+Relative to source legacy policy $L$ with buffer $b_0=0.15$ CHAR, choose
+\begin{align}
+\max_{(p,b)\in\mathcal{P}\times\mathcal{B}}\;&\min_{\omega\in\Omega}\frac{V_\omega(p,b)}{V_\omega(L,b_0)}\\
+\text{subject to}\quad& H_\omega(p,b)\le H_\omega(L,b_0)+0.020,\quad\forall \omega,\\
+& C_\omega(p,b)\ge C_\omega(L,b_0)-0.030,\quad\forall \omega,\\
+& F_\omega(p,b)\ge0.70F_\omega(L,b_0),\quad\forall \omega,\\
+& V_\omega(p,b)\ge0.80V_\omega(L,b_0),\quad\forall \omega,\\
+& p\text{ satisfies monotonicity and boundary continuity in the model.}
+\end{align}
+
+The max exists on any nonempty feasible finite grid. The stated constraint thresholds are experimental choices, not derived from institutional requirements or empirically estimated welfare preferences. The value of $H$ is a concentration statistic, not environmental additionality. The quantity $F$ is a number of CHAR tokens, not verified producer cash income.
+
+\paragraph{Computed study.}
+`gate11_design.py` evaluated 14 fee policies and 4 execution buffers across 3 scenarios and 40 replications per scenario: 6,720 scenario-policy simulation replications. The first 26 replications form the training set and the last 14 an out-of-sample simulated holdout. Three interior-limit extension policies (floor 0.1\%, 0.5\%, 1.0\%) at the 0.30-CHAR buffer jointly maximize the worst-case normalized throughput at 1.000 on training. They are tied because the seven-project snapshot scenario does not change. The 0.1\% floor is presented as one representative of the tied finite-grid solutions, \emph{not} a uniquely optimal or deployed policy. In the holdout, changes in near-monopoly throughput have wide confidence intervals including zero; no empirical performance advantage is established.
+
+\end{document}

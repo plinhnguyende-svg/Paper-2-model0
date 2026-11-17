@@ -1,0 +1,86 @@
+name: CHAR Gate 27 verification provenance and continuous economic design
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [research/char-refi-standalone]
+    paths:
+      - '.github/workflows/char-gate27-provenance-economics.yml'
+      - 'scripts/gate27_verified_build_and_proxy.py'
+      - 'scripts/gate27_continuous_equilibrium.py'
+      - 'scripts/gate27_recompile_verified.js'
+      - 'tests/test_gate27_verified_build_and_proxy.py'
+      - 'tests/test_gate27_continuous_equilibrium.py'
+      - 'docs/GATE27_PROVENANCE_AND_CONDITIONAL_EQUILIBRIUM.md'
+permissions:
+  contents: read
+jobs:
+  targeted-provenance:
+    name: Targeted verified-build metadata and historical proxy change
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: stable
+      - name: Test provenance parser and proxy storage guardrails (offline)
+        run: python3 -m unittest discover -s tests -p 'test_gate27_verified_build_and_proxy.py' -v
+      - name: Read declared Base history and targeted explorer provenance
+        env:
+          BASE_RPC_URL: ${{ secrets.BASE_RPC_URL }}
+        run: |
+          set -euo pipefail
+          python3 scripts/gate27_verified_build_and_proxy.py --out gate27/provenance | tee gate27_PROVENANCE.log
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install the two exact Solidity compiler versions for reproducibility
+        run: |
+          set -euo pipefail
+          npm install --no-audit --no-fund --silent --prefix gate27/compiler019 solc@0.8.19
+          npm install --no-audit --no-fund --silent --prefix gate27/compiler014 solc@0.8.14-fixed
+      - name: Independently rebuild three verified Standard JSON inputs
+        run: |
+          set -euo pipefail
+          for role in fee_calculator early_pool_implementation later_pool_implementation; do
+            case "$role" in
+              fee_calculator) compiler=gate27/compiler019 ;;
+              *) compiler=gate27/compiler014 ;;
+            esac
+            node scripts/gate27_recompile_verified.js \
+              "gate27/provenance/${role}_sourcify_v2_verification.json" \
+              "$compiler" \
+              "gate27/provenance/${role}_INDEPENDENT_REBUILD.json"
+          done
+      - name: Archive public verification responses and RPC evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: char-gate27-targeted-provenance
+          path: |
+            gate27/provenance/**
+            gate27_PROVENANCE.log
+          if-no-files-found: warn
+
+  conditional-economics:
+    name: Real-formula conditional equilibrium and continuous scale inverse
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Check exact inverse FOC against global Gate 20 solver
+        run: python3 -m unittest discover -s tests -p 'test_gate27_continuous_equilibrium.py' -v
+      - name: Construct fixed-state continuous-scale equilibrium candidate
+        run: python3 scripts/gate27_continuous_equilibrium.py --out results/gate27
+      - name: Archive conditional mathematical outputs (synthetic)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: char-gate27-conditional-economic-equilibrium
+          path: |
+            results/gate27/**
+          if-no-files-found: warn

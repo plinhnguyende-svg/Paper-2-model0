@@ -1,0 +1,191 @@
+[
+  {
+    "path": "Track_C1_Gate13_GitHub_EVM_Contractual_Audit/synthetic_beta_bounds.csv",
+    "rows": 20,
+    "archived_rows": 20,
+    "numeric_match_1e_10": true,
+    "max_numeric_abs_diff": 0.0
+  },
+  {
+    "path": "Track_C1_Gate12_Deployment_SCM_Microfoundation/track_c1_gate12/data/execution_sensitivity_SYNTHETIC.csv",
+    "rows": 192,
+    "archived_rows": 192,
+    "numeric_match_1e_10": true,
+    "max_numeric_abs_diff": 0.0
+  },
+  {
+    "path": "Track_C1_Gate12_Deployment_SCM_Microfoundation/track_c1_gate12/data/boundary_and_upstream_SYNTHETIC.csv",
+    "rows": 32,
+    "archived_rows": 32,
+    "numeric_match_1e_10": true,
+    "max_numeric_abs_diff": 0.0
+  },
+  {
+    "path": "Track_C1_Gate12_Deployment_SCM_Microfoundation/track_c1_gate12/data/scenario_results_SYNTHETIC.csv",
+    "rows": 16,
+    "archived_rows": 16,
+    "numeric_match_1e_10": true,
+    "max_numeric_abs_diff": 0.0
+  },
+  {
+    "path": "Track_C1_Gate12_Deployment_SCM_Microfoundation/track_c1_gate12/data/beta_liquidity_sensitivity_SYNTHETIC.csv",
+    "rows": 320,
+    "archived_rows": 320,
+    "numeric_match_1e_10": true,
+    "max_numeric_abs_diff": 0.0
+  },
+  {
+    "path": "Track_C1_Gate9_Formal_Smart_Contract_Mechanism/Track_C1_Gate9/policy_simulation_summary.csv",
+    "rows": 3,
+    "archived_rows": 3,
+    "numeric_match_1e_10": true,
+    "max_numeric_abs_diff": 0.0
+  },
+  {
+    "path": "Track_C1_Gate9_Formal_Smart_Contract_Mechanism/Track_C1_Gate9/joint_mechanism_summary.csv",
+    "rows": 5,
+    "archived_rows": 5,
+    "numeric_match_1e_10": true,
+    "max_numeric_abs_diff": 0.0
+  },
+  {
+    "path": "Track_C1_Gate9_Formal_Smart_Contract_Mechanism/Track_C1_Gate9/sensitivity_summary.csv",
+    "rows": 12,
+    "archived_rows": 12,
+    "numeric_match_1e_10": true,
+    "max_numeric_abs_diff": 0.0
+  },
+  {
+    "path": "Track_C1_Gate9_Formal_Smart_Contract_Mechanism/Track_C1_Gate9/hypothetical_recapture_participation.csv",
+    "rows": 6,
+    "archived_rows": 6,
+    "numeric_match_1e_10": true,
+    "max_numeric_abs_diff": 0.0
+  },
+  {
+    "path": "Track_C1_Gate9_Formal_Smart_Contract_Mechanism/Track_C1_Gate9/hypothetical_fee_split_examples.csv",
+    "rows": 4,
+    "archived_rows": 4,
+    "numeric_match_1e_10": true,
+    "max_numeric_abs_diff": 0.0
+  },
+  {
+    "path": "Track_C1_Gate9_Formal_Smart_Contract_Mechanism/Track_C1_Gate9/snapshot_one_trade.csv",
+    "rows": 7,
+    "archived_rows": 7,
+    "numeric_match_1e_10": true,
+    "max_numeric_abs_diff": 0.0
+  },
+  {
+    "path": "Track_C1_Gate9_Formal_Smart_Contract_Mechanism/Track_C1_Gate9/boundary_experiment.csv",
+    "rows": 5,
+    "archived_rows": 5,
+    "numeric_match_1e_10": true,
+    "max_numeric_abs_diff": 0.0
+  },
+  {
+    "path": "Track_C1_Gate9_Formal_Smart_Contract_Mechanism/Track_C1_Gate9/maxfee_execution_stress_summary.csv",
+    "rows": 5,
+    "archived_rows": 5,
+    "numeric_match_1e_10": true,
+    "max_numeric_abs_diff": 0.0
+  },
+  {
+    "path": "Track_C1_Gate9_Formal_Smart_Contract_Mechanism/Track_C1_Gate9/policy_simulation_replications.csv",
+    "rows": 480,
+    "archived_rows": 480,
+    "numeric_match_1e_10": true,
+    "max_numeric_abs_diff": 0.0
+  },
+  {
+    "path": "Track_C1_Gate9_Formal_Smart_Contract_Mechanism/Track_C1_Gate9/joint_mechanism_replications.csv",
+    "rows": 550,
+    "archived_rows": 550,
+    "numeric_match_1e_10": true,
+    "max_numeric_abs_diff": 0.0
+  },
+  {
+    "path": "Track_C1_Gate10_Smart_Contract_Verification_and_Robustness/track_c1_gate10/data/policy_replications_SYNTHETIC.csv",
+    "rows": 4500,
+    "archived_rows": 4500,
+    "numeric_match_1e_10": true,
+    "max_numeric_abs_diff": 0.0
+  },
+  {
+    "path": "Track_C1_Gate10_Smart_Contract_Verification_and_Robustness/track_c1_gate10/data/boundary_fee_grid.csv",
+    "rows": 14,
+    "archived_rows": 14,
+    "numeric_match_1e_10": true,
+    "max_numeric_abs_diff": 0.0
+  },
+  {
+    "path": "Track_C1_Gate10_Smart_Contract_Verification_and_Robustness/track_c1_gate10/data/policy_summary_SYNTHETIC.csv",
+    "rows": 45,
+    "archived_rows": 45,
+    "numeric_match_1e_10": true,
+    "max_numeric_abs_diff": 0.0
+  },
+  {
+    "path": "Track_C1_Gate11_EVM_Validation_Design_Optimization/track_c1_gate11/data/holdout_policy_tradeoffs_SYNTHETIC.csv",
+    "rows": 56,
+    "archived_rows": 56,
+    "numeric_match_1e_10": true,
+    "max_numeric_abs_diff": 0.0
+  },
+  {
+    "path": "Track_C1_Gate11_EVM_Validation_Design_Optimization/track_c1_gate11/data/paired_holdout_differences_CI_SYNTHETIC.csv",
+    "rows": 18,
+    "archived_rows": 18,
+    "numeric_match_1e_10": true,
+    "max_numeric_abs_diff": 0.0
+  },
+  {
+    "path": "Track_C1_Gate11_EVM_Validation_Design_Optimization/track_c1_gate11/data/selected_holdout_SYNTHETIC.csv",
+    "rows": 3,
+    "archived_rows": 3,
+    "numeric_match_1e_10": true,
+    "max_numeric_abs_diff": 0.0
+  },
+  {
+    "path": "Track_C1_Gate11_EVM_Validation_Design_Optimization/track_c1_gate11/data/epsilon_constrained_policy_grid.csv",
+    "rows": 40,
+    "archived_rows": 40,
+    "numeric_match_1e_10": true,
+    "max_numeric_abs_diff": 0.0
+  },
+  {
+    "path": "Track_C1_Gate11_EVM_Validation_Design_Optimization/track_c1_gate11/data/monotonicity_grid_check_SYNTHETIC.csv",
+    "rows": 14,
+    "archived_rows": 14,
+    "numeric_match_1e_10": true,
+    "max_numeric_abs_diff": 0.0
+  },
+  {
+    "path": "Track_C1_Gate11_EVM_Validation_Design_Optimization/track_c1_gate11/data/hypothetical_fee_recipient_splits_SYNTHETIC.csv",
+    "rows": 12,
+    "archived_rows": 12,
+    "numeric_match_1e_10": true,
+    "max_numeric_abs_diff": 0.0
+  },
+  {
+    "path": "Track_C1_Gate11_EVM_Validation_Design_Optimization/track_c1_gate11/data/replications_SYNTHETIC.csv",
+    "rows": 6720,
+    "archived_rows": 6720,
+    "numeric_match_1e_10": true,
+    "max_numeric_abs_diff": 0.0
+  },
+  {
+    "path": "Track_C1_Gate11_EVM_Validation_Design_Optimization/track_c1_gate11/data/selected_policy_means_SYNTHETIC.csv",
+    "rows": 6,
+    "archived_rows": 6,
+    "numeric_match_1e_10": true,
+    "max_numeric_abs_diff": 0.0
+  },
+  {
+    "path": "Track_C1_Gate11_EVM_Validation_Design_Optimization/track_c1_gate11/data/policy_scenario_means_SYNTHETIC.csv",
+    "rows": 336,
+    "archived_rows": 336,
+    "numeric_match_1e_10": true,
+    "max_numeric_abs_diff": 0.0
+  }
+]
